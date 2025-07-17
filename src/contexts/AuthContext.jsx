@@ -1,16 +1,13 @@
 // src/contexts/AuthContext.jsx
-import React, { createContext, useContext } from 'react'; // Eliminamos useState y useEffect
+import React, { createContext, useContext, useState, useEffect } from 'react'; // <-- Asegúrate de que useState y useEffect estén aquí
 import { useNavigate } from 'react-router-dom';
-import initialUsersData from '../data/users.json';
-import useLocalStorage from '../hooks/useLocalStorage'; // <-- Importa el hook personalizado
+import initialUsersData from '../data/users.json'; // Asegúrate de que este archivo exista
+import useLocalStorage from '../hooks/useLocalStorage';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-    // Utiliza useLocalStorage para el usuario logueado
     const [user, setUser] = useLocalStorage('currentUser', null);
-
-    // Utiliza useLocalStorage para la lista completa de usuarios
     const [allUsers, setAllUsers] = useLocalStorage('allUsers', initialUsersData);
 
     const navigate = useNavigate();
@@ -22,28 +19,31 @@ export const AuthProvider = ({ children }) => {
 
         if (foundUser) {
             setUser(foundUser);
+            // La redirección aquí puede ser redundante si ya la tienes en LoginPage
+            // navigate(foundUser.role === 'admin' ? '/admin' : '/', { replace: true });
             return true;
         }
         return false;
     };
 
-    const register = (username, password, phone) => {
+    const register = (username, password, phone) => { // Añadido 'phone'
         if (allUsers.some(u => u.username === username)) {
-            alert("El nombre de usuario ya está en uso.");
-            return false;
+            // No uses alert(), es mejor manejar el error con un estado en el componente
+            // alert("El nombre de usuario ya está en uso.");
+            return false; // Indicamos que el registro falló
         }
 
         const newUser = {
             id: `user${allUsers.length > 0 ? Math.max(...allUsers.map(u => parseInt(u.id.replace('user', '') || 0))) + 1 : 1}`,
             username,
             password,
-            role: 'user',
-            phone,
-            purchases: []
+            role: 'user', // Rol por defecto para nuevos registros
+            phone, // Guardar el teléfono
+            purchases: [] // Inicializar compras
         };
 
         setAllUsers(prevUsers => [...prevUsers, newUser]);
-        return true;
+        return true; // Indicamos que el registro fue exitoso
     };
 
     const logout = () => {

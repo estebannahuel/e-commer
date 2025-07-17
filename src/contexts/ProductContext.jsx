@@ -1,13 +1,11 @@
 // src/contexts/ProductContext.jsx
-import React, { createContext, useContext } from 'react'; // Eliminamos useState y useEffect
-import productsData from '../data/products.json';
-import useLocalStorage from '../hooks/useLocalStorage'; // <-- Importa el hook personalizado
+import React, { createContext, useContext, useState, useEffect } from 'react'; // <-- Asegúrate de que useState y useEffect estén aquí
+import productsData from '../data/products.json'; // Asegúrate de que este archivo exista
+import useLocalStorage from '../hooks/useLocalStorage';
 
 const ProductContext = createContext(null);
 
 export const ProductProvider = ({ children }) => {
-    // Definimos el valor inicial que useLocalStorage usará si no hay nada en localStorage
-    // o si estamos en un entorno sin window (como Vercel build).
     const initialProductsState = productsData.map(p => ({
         ...p,
         ratingSum: p.ratingSum || 0,
@@ -15,7 +13,6 @@ export const ProductProvider = ({ children }) => {
         purchaseCount: p.purchaseCount || 0,
     }));
 
-    // Utiliza useLocalStorage para manejar el estado de los productos y su persistencia
     const [products, setProducts] = useLocalStorage('ecommerceProducts', initialProductsState);
 
     const getProductById = (id) => products.find(p => p.id === id);

@@ -10,8 +10,12 @@ import Footer from '../components/Footer';
 import HomePage from '../pages/user/HomePage';
 import ProductsPage from '../pages/user/ProductsPage';
 import ProductDetailPage from '../pages/user/ProductDetailPage';
-import CartPage from '../pages/user/CartPage'; // Ahora será protegida
-import LoginPage from '../pages/LoginPage';
+import CartPage from '../pages/user/CartPage';
+import UserProfilePage from '../pages/user/UserProfilePage'; // <-- NUEVA Importación
+
+// Páginas de Autenticación
+import LoginPage from '../pages/auth/LoginPage';    // <-- Ruta Correcta (en src/pages/auth/)
+import RegisterPage from '../pages/auth/RegisterPage'; // <-- NUEVA Importación y ruta correcta (en src/pages/auth/)
 
 // Páginas de Administración
 import AdminDashboard from '../pages/admin/AdminDashboard';
@@ -24,7 +28,7 @@ import NotFoundPage from '../pages/NotFoundPage';
 
 // Componentes y Contextos de Autenticación
 import { AuthProvider } from '../contexts/AuthContext';
-import ProtectedRoute from '../components/ProtectedRoute';
+import ProtectedRoute from '../components/ProtectedRoute'; // Tu ProtectedRoute existente
 
 // Otros Context Providers
 import { ProductProvider } from '../contexts/ProductContext';
@@ -47,11 +51,12 @@ const AppRouter = () => {
                   <Route path="/productos" element={<ProductsPage />} />
                   <Route path="/producto/:id" element={<ProductDetailPage />} />
                   <Route path="/login" element={<LoginPage />} />
+                  <Route path="/register" element={<RegisterPage />} /> {/* <-- NUEVA RUTA */}
 
                   {/* Rutas Protegidas para usuarios y administradores */}
-                  {/* El carrito solo es accesible si estás logueado (rol 'user' o 'admin') */}
                   <Route element={<ProtectedRoute allowedRoles={['user', 'admin']} />}>
                     <Route path="/carrito" element={<CartPage />} />
+                    <Route path="/perfil" element={<UserProfilePage />} /> {/* <-- NUEVA RUTA PROTEGIDA */}
                   </Route>
 
                   {/* Rutas de Administración (Solo para admins) */}

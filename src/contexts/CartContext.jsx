@@ -1,11 +1,10 @@
 // src/contexts/CartContext.jsx
-import React, { createContext, useContext } from 'react'; // Eliminamos useState y useEffect
-import useLocalStorage from '../hooks/useLocalStorage'; // <-- Importa el hook personalizado
+import React, { createContext, useContext, useState, useEffect } from 'react'; // <-- Asegúrate de que useState y useEffect estén aquí
+import useLocalStorage from '../hooks/useLocalStorage';
 
 const CartContext = createContext(null);
 
 export const CartProvider = ({ children }) => {
-    // Utiliza useLocalStorage para el estado del carrito
     const [cartItems, setCartItems] = useLocalStorage('ecommerceCart', []);
 
     const addItemToCart = (product, quantity = 1) => {
