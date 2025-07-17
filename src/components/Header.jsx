@@ -1,13 +1,16 @@
-// src/components/Header.jsx
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Navbar, Nav, Container, Badge, Button, NavDropdown } from 'react-bootstrap'; // Importa NavDropdown
+import { Navbar, Nav, Container, Badge, Button, NavDropdown } from 'react-bootstrap';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useOrders } from '../contexts/OrderContext'; // Importa useOrders
 
 const Header = () => {
     const { getTotalItems } = useCart();
     const { isAuthenticated, isAdmin, logout, user } = useAuth();
+    const { getPendingOrdersCount } = useOrders(); // Usa la nueva función
+
+    const pendingOrders = isAdmin ? getPendingOrdersCount() : 0; // Obtén el conteo solo si es admin
 
     return (
         <Navbar bg="primary" variant="dark" expand="lg" sticky="top" className="shadow-sm">
@@ -36,18 +39,43 @@ const Header = () => {
                         {/* Lógica condicional para el Admin / Perfil / Iniciar Sesión / Registro */}
                         {isAuthenticated ? (
                             <NavDropdown
-                                title={<span className="text-white-50 small"><i className="bi bi-person-circle me-1"></i> Hola, {user?.username}!</span>}
+                                title={
+                                    <span className="text-white-50 small">
+                                        <i className="bi bi-person-circle me-1"></i> Hola, {user?.username}!
+                                        {/* Badge para notificaciones de pedidos pendientes */}
+                                        {isAdmin && pendingOrders > 0 && (
+                                            <Badge pill bg="danger" className="ms-2">
+                                                {pendingOrders}
+                                            </Badge>
+                                        )}
+                                    </span>
+                                }
                                 id="basic-nav-dropdown"
-                                align="end" // Alinea el dropdown a la derecha
+                                align="end"
                                 className="me-2"
                             >
                                 <NavDropdown.Item as={Link} to="/perfil">
                                     <i className="bi bi-person me-2"></i> Mi Perfil
                                 </NavDropdown.Item>
                                 {isAdmin && (
-                                    <NavDropdown.Item as={Link} to="/admin">
-                                        <i className="bi bi-gear-fill me-2"></i> Panel Admin
-                                    </NavDropdown.Item>
+                                    <>
+                                        <NavDropdown.Item as={Link} to="/admin">
+                                            <i className="bi bi-gear-fill me-2"></i> Panel Admin
+                                            {pendingOrders > 0 && (
+                                                <Badge pill bg="danger" className="ms-2">
+                                                    {pendingOrders} nuevo(s)
+                                                </Badge>
+                                            )}
+                                        </NavDropdown.Item>
+                                        <NavDropdown.Item as={Link} to="/admin/ordenes">
+                                            <i className="bi bi-receipt-cutoff me-2"></i> Gestión de Órdenes
+                                            {pendingOrders > 0 && (
+                                                <Badge pill bg="danger" className="ms-2">
+                                                    {pendingOrders} pendiente(s)
+                                                </Badge>
+                                            )}
+                                        </NavDropdown.Item>
+                                    </>
                                 )}
                                 <NavDropdown.Divider />
                                 <NavDropdown.Item onClick={logout}>

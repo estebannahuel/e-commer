@@ -1,5 +1,4 @@
-// src/contexts/OrderContext.jsx
-import React, { createContext, useContext, useState, useEffect } from 'react'; // <-- Asegúrate de que useState y useEffect estén aquí
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import initialOrdersData from '../data/orders.json';
 import { useAuth } from './AuthContext';
 import { useProducts } from './ProductContext';
@@ -8,7 +7,17 @@ import useLocalStorage from '../hooks/useLocalStorage';
 const OrderContext = createContext(null);
 
 export const OrderProvider = ({ children }) => {
-    const [orders, setOrders] = useLocalStorage('ecommerceOrders', initialOrdersData);
+    // Inicializa orders con los datos del localStorage o initialOrdersData.
+    // Es CRUCIAL que los pedidos viejos que no tienen 'isNewForAdmin' lo adquieran con 'false'.
+    // Esto se hace una única vez al cargar el contexto para evitar contadores incorrectos.
+    const [orders, setOrders] = useLocalStorage('ecommerceOrders', () => {
+        // Mapea los pedidos iniciales para asegurar que tengan la propiedad isNewForAdmin
+        // Los pedidos existentes (cargados del JSON o localStorage por primera vez) no son "nuevos"
+        return initialOrdersData.map(order => ({
+            ...order,
+            isNewForAdmin: order.isNewForAdmin !== undefined ? order.isNewForAdmin : false // Si ya existe, usa su valor, si no, es false.
+        }));
+    });
 
     const { user } = useAuth();
     const { incrementPurchaseCount } = useProducts();
@@ -24,7 +33,8 @@ export const OrderProvider = ({ children }) => {
             userId: user.id,
             userName: user.username,
             date: new Date().toISOString().slice(0, 10),
-            status: "Pendiente",
+            status: "Pendiente", // Nuevo pedido siempre comienza como "Pendiente"
+            isNewForAdmin: true, // ¡NUEVA PROPIEDAD! Marcado como nuevo para el admin
             total: total,
             items: cartItems.map(item => ({
                 productId: item.id,
@@ -35,7 +45,6 @@ export const OrderProvider = ({ children }) => {
         };
         setOrders(prevOrders => [...prevOrders, newOrder]);
 
-        // Asegúrate de que incrementPurchaseCount exista y se use correctamente
         newOrder.items.forEach(item => {
             incrementPurchaseCount(item.productId, item.quantity);
         });
@@ -53,15 +62,42 @@ export const OrderProvider = ({ children }) => {
 
     const updateOrderStatus = (orderId, newStatus) => {
         setOrders(prevOrders =>
-            prevOrders.map(order =>
-                order.id === orderId ? { ...order, status: newStatus } : order
-            )
+            prevOrders.map(order => {
+                if (order.id === orderId) {
+                    // Si el estado cambia de "Pendiente" a cualquier otra cosa,
+                    // y aún no ha sido marcado como revisado, lo marcamos.
+                    // Esto cubre también cambios de estado manuales del admin.
+                    const updatedOrder = { ...order, status: newStatus };
+                    if (order.status === 'Pendiente' && newStatus !== 'Pendiente' && updatedOrder.isNewForAdmin) {
+                        updatedOrder.isNewForAdmin = false;
+                    }
+                    return updatedOrder;
+                }
+                return order;
+            })
         );
     };
 
     const deleteOrder = (orderId) => {
         setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId));
     };
+
+    // FUNCIÓN MODIFICADA: Ahora solo cuenta pedidos "Pendiente" Y "isNewForAdmin: true"
+    const getPendingOrdersCount = () => {
+        return orders.filter(order => order.status === 'Pendiente' && order.isNewForAdmin).length;
+    };
+
+    // FUNCIÓN MODIFICADA: Al marcar como revisado, cambia a "En Proceso" y `isNewForAdmin` a `false`
+    const markOrderAsReviewed = (orderId) => {
+        setOrders(prevOrders =>
+            prevOrders.map(order =>
+                order.id === orderId && order.status === 'Pendiente'
+                    ? { ...order, status: 'En Proceso', isNewForAdmin: false } // Cambia el estado y lo marca como revisado
+                    : order
+            )
+        );
+    };
+
 
     return (
         <OrderContext.Provider value={{
@@ -70,7 +106,9 @@ export const OrderProvider = ({ children }) => {
             getUserOrders,
             getOrderById,
             updateOrderStatus,
-            deleteOrder
+            deleteOrder,
+            getPendingOrdersCount,
+            markOrderAsReviewed
         }}>
             {children}
         </OrderContext.Provider>
