@@ -5,7 +5,7 @@ import useLocalStorage from '../hooks/useLocalStorage';
 const CartContext = createContext(null);
 
 export const CartProvider = ({ children }) => {
-    const [cartItems, setCartItems] = useLocalStorage('ecommerceCart', []);
+    const [cartItems, setCartItems] = useLocalStorage('ecommerceCart', []); // Correcto: inicializa con un array vacío
 
     const addItemToCart = (product, quantity = 1) => {
         setCartItems(prevItems => {

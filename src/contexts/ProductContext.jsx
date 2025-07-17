@@ -1,17 +1,18 @@
 // src/contexts/ProductContext.jsx
-import React, { createContext, useContext, useState, useEffect } from 'react'; // <-- Asegúrate de que useState y useEffect estén aquí
-import productsData from '../data/products.json'; // Asegúrate de que este archivo exista
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import productsData from '../data/products.json'; 
 import useLocalStorage from '../hooks/useLocalStorage';
 
 const ProductContext = createContext(null);
 
 export const ProductProvider = ({ children }) => {
-    const initialProductsState = productsData.map(p => ({
+    // Asegúrate de que productsData sea un array, incluso si el JSON está vacío o malformado
+    const initialProductsState = Array.isArray(productsData) ? productsData.map(p => ({
         ...p,
         ratingSum: p.ratingSum || 0,
         ratingCount: p.ratingCount || 0,
         purchaseCount: p.purchaseCount || 0,
-    }));
+    })) : []; // Si productsData no es un array, inicializa con un array vacío.
 
     const [products, setProducts] = useLocalStorage('ecommerceProducts', initialProductsState);
 

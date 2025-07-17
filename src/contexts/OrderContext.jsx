@@ -8,15 +8,12 @@ import useLocalStorage from '../hooks/useLocalStorage';
 const OrderContext = createContext(null);
 
 export const OrderProvider = ({ children }) => {
-    // Inicializa orders con los datos del localStorage o initialOrdersData.
-    // Es CRUCIAL que los pedidos viejos que no tienen 'isNewForAdmin' lo adquieran con 'false'.
-    // Esto se hace una única vez al cargar el contexto para evitar contadores incorrectos.
     const [orders, setOrders] = useLocalStorage('ecommerceOrders', () => {
-        // Mapea los pedidos iniciales para asegurar que tengan la propiedad isNewForAdmin
-        // Los pedidos existentes (cargados del JSON o localStorage por primera vez) no son "nuevos"
-        return initialOrdersData.map(order => ({
+        // Asegúrate de que initialOrdersData sea un array. Si no lo es, usa un array vacío.
+        const dataToMap = Array.isArray(initialOrdersData) ? initialOrdersData : [];
+        return dataToMap.map(order => ({
             ...order,
-            isNewForAdmin: order.isNewForAdmin !== undefined ? order.isNewForAdmin : false // Si ya existe, usa su valor, si no, es false.
+            isNewForAdmin: order.isNewForAdmin !== undefined ? order.isNewForAdmin : false
         }));
     });
 
@@ -34,8 +31,8 @@ export const OrderProvider = ({ children }) => {
             userId: user.id,
             userName: user.username,
             date: new Date().toISOString().slice(0, 10),
-            status: "Pendiente", // La orden se crea como "Pendiente" inicialmente
-            isNewForAdmin: true, // ¡IMPORTANTE! Marcado como nuevo para el admin
+            status: "Pendiente",
+            isNewForAdmin: true,
             total: total,
             items: cartItems.map(item => ({
                 productId: item.id,
@@ -54,64 +51,58 @@ export const OrderProvider = ({ children }) => {
     };
 
     const getUserOrders = (userId) => {
-        return orders.filter(order => order.userId === userId);
+        // Asegúrate de que 'orders' es un array antes de intentar filtrar
+        return Array.isArray(orders) ? orders.filter(order => order.userId === userId) : [];
     };
 
     const getOrderById = (orderId) => {
-        return orders.find(order => order.id === orderId);
+        return Array.isArray(orders) ? orders.find(order => order.id === orderId) : undefined;
     };
 
     const updateOrderStatus = (orderId, newStatus) => {
         setOrders(prevOrders =>
-            prevOrders.map(order => {
+            Array.isArray(prevOrders) ? prevOrders.map(order => {
                 if (order.id === orderId) {
                     const updatedOrder = { ...order, status: newStatus };
-                    // Modificación: si el estado cambia de "Pendiente" O "Pagado"
-                    // a otro estado que no sea "Pendiente" O "Pagado", se desmarca como nuevo.
                     if ((order.status === 'Pendiente' || order.status === 'Pagado') && newStatus !== 'Pendiente' && newStatus !== 'Pagado' && updatedOrder.isNewForAdmin) {
                         updatedOrder.isNewForAdmin = false;
                     }
                     return updatedOrder;
                 }
                 return order;
-            })
+            }) : []
         );
     };
 
     const deleteOrder = (orderId) => {
-        setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId));
+        setOrders(prevOrders => Array.isArray(prevOrders) ? prevOrders.filter(order => order.id !== orderId) : []);
     };
 
-    // FUNCIÓN MODIFICADA: Ahora cuenta pedidos que necesitan revisión del admin
-    // Esto incluye "Pendiente" (si no se ha pagado aún) o "Pagado" (si ya se pagó y espera procesamiento)
     const getPendingOrdersCount = () => {
-        return orders.filter(order =>
+        return Array.isArray(orders) ? orders.filter(order =>
             (order.status === 'Pendiente' || order.status === 'Pagado') && order.isNewForAdmin
-        ).length;
+        ).length : 0;
     };
 
-    // FUNCIÓN MODIFICADA: Al marcar como revisado, cambia a "En Proceso" y `isNewForAdmin` a `false`
     const markOrderAsReviewed = (orderId) => {
         setOrders(prevOrders =>
-            prevOrders.map(order =>
+            Array.isArray(prevOrders) ? prevOrders.map(order =>
                 order.id === orderId && (order.status === 'Pendiente' || order.status === 'Pagado')
-                    ? { ...order, status: 'En Proceso', isNewForAdmin: false } // Cambia el estado a En Proceso y lo desmarca como nuevo
+                    ? { ...order, status: 'En Proceso', isNewForAdmin: false }
                     : order
-            )
+            ) : []
         );
     };
 
-    // FUNCIÓN MODIFICADA: Ahora marca la orden como "Pagado" en lugar de "Completado"
     const markOrderAsPaid = (orderId) => {
         setOrders(prevOrders =>
-            prevOrders.map(order =>
+            Array.isArray(prevOrders) ? prevOrders.map(order =>
                 order.id === orderId
-                    ? { ...order, status: 'Pagado', isNewForAdmin: true } // Marca como 'Pagado' y asegura que sea 'isNewForAdmin'
+                    ? { ...order, status: 'Pagado', isNewForAdmin: true }
                     : order
-            )
+            ) : []
         );
     };
-
 
     return (
         <OrderContext.Provider value={{
