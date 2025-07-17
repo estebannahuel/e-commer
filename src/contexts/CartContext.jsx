@@ -1,5 +1,5 @@
 // src/contexts/CartContext.jsx
-import React, { createContext, useContext, useState, useEffect } from 'react'; // <-- Asegúrate de que useState y useEffect estén aquí
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import useLocalStorage from '../hooks/useLocalStorage';
 
 const CartContext = createContext(null);

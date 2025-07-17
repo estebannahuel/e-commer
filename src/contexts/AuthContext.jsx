@@ -1,5 +1,5 @@
-// src/contexts/AuthContext.jsx
-import React, { createContext, useContext, useState, useEffect } from 'react'; // <-- Asegúrate de que useState y useEffect estén aquí
+// src/contexts/AuthContext.jsx (Tu código actual es correcto, sin cambios necesarios para esta tarea)
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import initialUsersData from '../data/users.json'; // Asegúrate de que este archivo exista
 import useLocalStorage from '../hooks/useLocalStorage';
@@ -19,8 +19,6 @@ export const AuthProvider = ({ children }) => {
 
         if (foundUser) {
             setUser(foundUser);
-            // La redirección aquí puede ser redundante si ya la tienes en LoginPage
-            // navigate(foundUser.role === 'admin' ? '/admin' : '/', { replace: true });
             return true;
         }
         return false;
@@ -28,9 +26,7 @@ export const AuthProvider = ({ children }) => {
 
     const register = (username, password, phone) => { // Añadido 'phone'
         if (allUsers.some(u => u.username === username)) {
-            // No uses alert(), es mejor manejar el error con un estado en el componente
-            // alert("El nombre de usuario ya está en uso.");
-            return false; // Indicamos que el registro falló
+            return false;
         }
 
         const newUser = {
@@ -43,7 +39,7 @@ export const AuthProvider = ({ children }) => {
         };
 
         setAllUsers(prevUsers => [...prevUsers, newUser]);
-        return true; // Indicamos que el registro fue exitoso
+        return true;
     };
 
     const logout = () => {

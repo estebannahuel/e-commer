@@ -1,3 +1,4 @@
+// src/contexts/OrderContext.jsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import initialOrdersData from '../data/orders.json';
 import { useAuth } from './AuthContext';
@@ -98,6 +99,17 @@ export const OrderProvider = ({ children }) => {
         );
     };
 
+    // NUEVA FUNCIÓN PARA LA DEMO: Marcar una orden como pagada (simulación)
+    const markOrderAsPaid = (orderId) => {
+        setOrders(prevOrders =>
+            prevOrders.map(order =>
+                order.id === orderId
+                    ? { ...order, status: 'Completado' } // Cambia el estado a "Completado"
+                    : order
+            )
+        );
+    };
+
 
     return (
         <OrderContext.Provider value={{
@@ -108,7 +120,8 @@ export const OrderProvider = ({ children }) => {
             updateOrderStatus,
             deleteOrder,
             getPendingOrdersCount,
-            markOrderAsReviewed
+            markOrderAsReviewed,
+            markOrderAsPaid // <-- Asegúrate de exportar esta nueva función
         }}>
             {children}
         </OrderContext.Provider>
