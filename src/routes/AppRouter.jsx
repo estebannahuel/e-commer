@@ -14,13 +14,13 @@ import CartPage from '../pages/user/CartPage';
 import UserProfilePage from '../pages/user/UserProfilePage';
 
 // NUEVAS PÁGINAS DE USUARIO PARA CHECKOUT Y ÓRDENES
-import CheckoutPage from '../pages/user/CheckoutPage'; // <-- NUEVA IMPORTACIÓN
-import CheckoutSuccessPage from '../pages/user/CheckoutSuccessPage'; // <-- NUEVA IMPORTACIÓN
-import MyOrdersPage from '../pages/user/MyOrdersPage'; // <-- NUEVA IMPORTACIÓN
+import CheckoutPage from '../pages/user/CheckoutPage';
+import CheckoutSuccessPage from '../pages/user/CheckoutSuccessPage';
+import MyOrdersPage from '../pages/user/MyOrdersPage';
 
 // Páginas de Autenticación
 import LoginPage from '../pages/auth/LoginPage';
-import RegisterPage from '../pages/auth/RegisterPage';
+import RegisterPage from '../pages/auth/RegisterPage'; // <<-- ESTA RUTA ES LA QUE DEBES VERIFICAR FÍSICAMENTE EN TU PROYECTO
 
 // Páginas de Administración
 import AdminDashboard from '../pages/admin/AdminDashboard';
@@ -63,9 +63,9 @@ const AppRouter = () => {
                                         <Route path="/carrito" element={<CartPage />} />
                                         <Route path="/perfil" element={<UserProfilePage />} />
                                         {/* NUEVAS RUTAS PROTEGIDAS */}
-                                        <Route path="/checkout" element={<CheckoutPage />} /> {/* Página de Checkout */}
-                                        <Route path="/checkout/success" element={<CheckoutSuccessPage />} /> {/* Página de éxito de pago */}
-                                        <Route path="/mis-ordenes" element={<MyOrdersPage />} /> {/* Página para ver las órdenes del usuario */}
+                                        <Route path="/checkout" element={<CheckoutPage />} />
+                                        <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
+                                        <Route path="/mis-ordenes" element={<MyOrdersPage />} />
                                     </Route>
 
                                     {/* Rutas de Administración (Solo para admins) */}
