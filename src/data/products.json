@@ -1,0 +1,56 @@
+[
+  {
+    "id": "1",
+    "name": "Laptop Gaming Pro",
+    "price": 1299.99,
+    "description": "Potente laptop para gaming con procesador de última generación y gráficos dedicados. Ideal para los juegos más exigentes y tareas de diseño gráfico.",
+    "category": "Laptops",
+    "stock": 10,
+    "image": "/images/laptop.jpg"
+  },
+  {
+    "id": "2",
+    "name": "Smartphone Ultra X",
+    "price": 899.00,
+    "description": "El smartphone más avanzado con pantalla OLED, cámara de 108MP y batería de larga duración. Captura tus momentos con la mejor calidad.",
+    "category": "Smartphones",
+    "stock": 25,
+    "image": "/images/celularx.png"
+  },
+  {
+    "id": "3",
+    "name": "Auriculares Bluetooth Hi-Fi",
+    "price": 149.50,
+    "description": "Disfruta de un sonido inmersivo y cristalino con estos auriculares Bluetooth de alta fidelidad. Diseño ergonómico para horas de comodidad.",
+    "category": "Accesorios",
+    "stock": 50,
+    "image": "/images/auriculareb.jpg"
+  },
+  {
+    "id": "4",
+    "name": "Smartwatch Chronos",
+    "price": 199.99,
+    "description": "Monitorea tu salud y recibe notificaciones en tu muñeca. Con funciones de seguimiento de actividad, ritmo cardíaco y GPS integrado.",
+    "category": "Wearables",
+    "stock": 15,
+    "image": "/images/relog.jpg"
+  },
+  {
+    "id": "5",
+    "name": "Teclado Mecánico RGB",
+    "price": 89.99,
+    "description": "Teclado mecánico con retroiluminación RGB personalizable y switches de alta durabilidad para una experiencia de escritura y juego superior.",
+    "category": "Periféricos",
+    "stock": 30,
+    "image": "/images/teclado.jfif"
+  },
+  {
+    "id": "6",
+    "name": "Monitor Curvo 27''",
+    "price": 349.99,
+    "description": "Sumérgete en tus juegos y películas con este monitor curvo de 27 pulgadas. Resolución Full HD y tasa de refresco de 144Hz para una imagen fluida.",
+    "category": "Monitores",
+    "stock": 8,
+    "image": "/images/monitor.jpeg"
+  }
+]

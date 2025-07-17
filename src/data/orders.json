@@ -1,0 +1,35 @@
+[
+  {
+    "id": "ORD001",
+    "userId": "user2",
+    "userName": "juanperez",
+    "date": "2025-07-10",
+    "status": "Completado",
+    "total": 1299.99,
+    "items": [
+      { "productId": "1", "name": "Laptop Gaming Pro", "quantity": 1, "price": 1299.99 }
+    ]
+  },
+  {
+    "id": "ORD002",
+    "userId": "user2",
+    "userName": "juanperez",
+    "date": "2025-07-12",
+    "status": "Pendiente",
+    "total": 149.50,
+    "items": [
+      { "productId": "3", "name": "Auriculares Bluetooth Hi-Fi", "quantity": 1, "price": 149.50 }
+    ]
+  },
+  {
+    "id": "ORD003",
+    "userId": "user3",
+    "userName": "mariag",
+    "date": "2025-07-14",
+    "status": "Enviado",
+    "total": 199.99,
+    "items": [
+      { "productId": "4", "name": "Smartwatch Chronos", "quantity": 1, "price": 199.99 }
+    ]
+  }
+]

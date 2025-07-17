@@ -1,0 +1,35 @@
+[
+  {
+    "id": "user1",
+    "username": "admin",
+    "password": "admin123",
+    "role": "admin",
+    "phone": "555-1234",
+    "purchases": []
+  },
+  {
+    "id": "user2",
+    "username": "juanperez",
+    "password": "password123",
+    "role": "user",
+    "phone": "555-5678",
+    "purchases": [
+      {
+        "orderId": "ORD001",
+        "date": "2025-07-10",
+        "total": 1299.99,
+        "items": [
+          { "productId": "1", "name": "Laptop Gaming Pro", "quantity": 1 }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "user3",
+    "username": "mariag",
+    "password": "securepwd",
+    "role": "user",
+    "phone": "555-8765",
+    "purchases": []
+  }
+]
