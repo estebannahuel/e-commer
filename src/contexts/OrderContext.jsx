@@ -1,28 +1,18 @@
-// src/contexts/OrderContext.jsx (Modificado)
-import React, { createContext, useContext, useState, useEffect } from 'react';
+// src/contexts/OrderContext.jsx
+import React, { createContext, useContext } from 'react'; // Eliminamos useState y useEffect
 import initialOrdersData from '../data/orders.json';
 import { useAuth } from './AuthContext';
-import { useProducts } from './ProductContext'; // Importar ProductContext
+import { useProducts } from './ProductContext';
+import useLocalStorage from '../hooks/useLocalStorage'; // <-- Importa el hook personalizado
 
 const OrderContext = createContext(null);
 
 export const OrderProvider = ({ children }) => {
-    const [orders, setOrders] = useState(() => {
-        try {
-            const storedOrders = localStorage.getItem('ecommerceOrders');
-            return storedOrders ? JSON.parse(storedOrders) : initialOrdersData;
-        } catch (e) {
-            console.error("Error parsing orders from localStorage", e);
-            return initialOrdersData;
-        }
-    });
+    // Utiliza useLocalStorage para el estado de las órdenes
+    const [orders, setOrders] = useLocalStorage('ecommerceOrders', initialOrdersData);
 
     const { user } = useAuth();
-    const { incrementPurchaseCount } = useProducts(); // Obtener la función del ProductContext
-
-    useEffect(() => {
-        localStorage.setItem('ecommerceOrders', JSON.stringify(orders));
-    }, [orders]);
+    const { incrementPurchaseCount } = useProducts();
 
     const placeOrder = (cartItems, total) => {
         if (!user) {
@@ -46,7 +36,6 @@ export const OrderProvider = ({ children }) => {
         };
         setOrders(prevOrders => [...prevOrders, newOrder]);
 
-        // NUEVO: Incrementar la cuenta de compras de cada producto en la orden
         newOrder.items.forEach(item => {
             incrementPurchaseCount(item.productId, item.quantity);
         });
