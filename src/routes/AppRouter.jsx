@@ -20,7 +20,7 @@ import MyOrdersPage from '../pages/user/MyOrdersPage';
 
 // Páginas de Autenticación
 import LoginPage from '../pages/auth/LoginPage';
-import RegisterPage from '../pages/auth/RegisterPage'; // <<-- ESTA RUTA ES LA QUE DEBES VERIFICAR FÍSICAMENTE EN TU PROYECTO
+import RegisterPage from '../pages/auth/RegisterPage.jsx'; // <<-- ESTA RUTA ES LA QUE DEBES VERIFICAR FÍSICAMENTE EN TU PROYECTO
 
 // Páginas de Administración
 import AdminDashboard from '../pages/admin/AdminDashboard';
