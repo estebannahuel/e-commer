@@ -1,38 +1,37 @@
 // src/components/FakePaymentGateway.jsx
 import React, { useState } from 'react';
-import { Card, Button, Alert, ListGroup, Spinner } from 'react-bootstrap'; // Importa Spinner
+import { Card, Button, Alert, ListGroup, Spinner } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { useOrders } from '../contexts/OrderContext';
 
 const FakePaymentGateway = ({ orderId, total }) => {
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
-    const [message, setMessage] = useState(''); // Para mensajes de éxito/error
-    const [paymentMethodSelected, setPaymentMethodSelected] = useState(null); // Para saber qué método se seleccionó
+    const [message, setMessage] = useState('');
+    const [paymentMethodSelected, setPaymentMethodSelected] = useState(null);
 
     const navigate = useNavigate();
-    const { markOrderAsPaid } = useOrders();
+    const { markOrderAsPaid } = useOrders(); // Usamos markOrderAsPaid
 
     const handleSimulatePayment = async (method) => {
-        if (loading) return; // Evita clics múltiples mientras carga
+        if (loading) return;
 
         setLoading(true);
         setSuccess(false);
         setMessage('');
         setPaymentMethodSelected(method);
 
-        // Simulación de un retardo para imitar una transacción real
         await new Promise(resolve => setTimeout(resolve, 1500));
 
         try {
-            // Llama a la función del OrderContext para marcar la orden como pagada
+            // Llama a la función del OrderContext para marcar la orden como PAGADA (no completada)
             markOrderAsPaid(orderId);
             setSuccess(true);
             setMessage(`¡Pago simulado con ${method} exitoso!`);
 
-            // Redirige al usuario a la página de confirmación después de un breve momento
+            // Redirige al usuario a una página de confirmación de pago
             setTimeout(() => {
-                navigate('/checkout/success', { state: { orderId: orderId } });
+                navigate('/checkout/success', { state: { orderId: orderId, status: 'Pagado' } });
             }, 1000);
 
         } catch (err) {
@@ -41,7 +40,7 @@ const FakePaymentGateway = ({ orderId, total }) => {
             setSuccess(false);
         } finally {
             setLoading(false);
-            setPaymentMethodSelected(null); // Resetea el método seleccionado
+            setPaymentMethodSelected(null);
         }
     };
 

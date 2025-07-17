@@ -34,8 +34,8 @@ export const OrderProvider = ({ children }) => {
             userId: user.id,
             userName: user.username,
             date: new Date().toISOString().slice(0, 10),
-            status: "Pendiente", // Nuevo pedido siempre comienza como "Pendiente"
-            isNewForAdmin: true, // ¡NUEVA PROPIEDAD! Marcado como nuevo para el admin
+            status: "Pendiente", // La orden se crea como "Pendiente" inicialmente
+            isNewForAdmin: true, // ¡IMPORTANTE! Marcado como nuevo para el admin
             total: total,
             items: cartItems.map(item => ({
                 productId: item.id,
@@ -65,11 +65,10 @@ export const OrderProvider = ({ children }) => {
         setOrders(prevOrders =>
             prevOrders.map(order => {
                 if (order.id === orderId) {
-                    // Si el estado cambia de "Pendiente" a cualquier otra cosa,
-                    // y aún no ha sido marcado como revisado, lo marcamos.
-                    // Esto cubre también cambios de estado manuales del admin.
                     const updatedOrder = { ...order, status: newStatus };
-                    if (order.status === 'Pendiente' && newStatus !== 'Pendiente' && updatedOrder.isNewForAdmin) {
+                    // Modificación: si el estado cambia de "Pendiente" O "Pagado"
+                    // a otro estado que no sea "Pendiente" O "Pagado", se desmarca como nuevo.
+                    if ((order.status === 'Pendiente' || order.status === 'Pagado') && newStatus !== 'Pendiente' && newStatus !== 'Pagado' && updatedOrder.isNewForAdmin) {
                         updatedOrder.isNewForAdmin = false;
                     }
                     return updatedOrder;
@@ -83,28 +82,31 @@ export const OrderProvider = ({ children }) => {
         setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId));
     };
 
-    // FUNCIÓN MODIFICADA: Ahora solo cuenta pedidos "Pendiente" Y "isNewForAdmin: true"
+    // FUNCIÓN MODIFICADA: Ahora cuenta pedidos que necesitan revisión del admin
+    // Esto incluye "Pendiente" (si no se ha pagado aún) o "Pagado" (si ya se pagó y espera procesamiento)
     const getPendingOrdersCount = () => {
-        return orders.filter(order => order.status === 'Pendiente' && order.isNewForAdmin).length;
+        return orders.filter(order =>
+            (order.status === 'Pendiente' || order.status === 'Pagado') && order.isNewForAdmin
+        ).length;
     };
 
     // FUNCIÓN MODIFICADA: Al marcar como revisado, cambia a "En Proceso" y `isNewForAdmin` a `false`
     const markOrderAsReviewed = (orderId) => {
         setOrders(prevOrders =>
             prevOrders.map(order =>
-                order.id === orderId && order.status === 'Pendiente'
-                    ? { ...order, status: 'En Proceso', isNewForAdmin: false } // Cambia el estado y lo marca como revisado
+                order.id === orderId && (order.status === 'Pendiente' || order.status === 'Pagado')
+                    ? { ...order, status: 'En Proceso', isNewForAdmin: false } // Cambia el estado a En Proceso y lo desmarca como nuevo
                     : order
             )
         );
     };
 
-    // NUEVA FUNCIÓN PARA LA DEMO: Marcar una orden como pagada (simulación)
+    // FUNCIÓN MODIFICADA: Ahora marca la orden como "Pagado" en lugar de "Completado"
     const markOrderAsPaid = (orderId) => {
         setOrders(prevOrders =>
             prevOrders.map(order =>
                 order.id === orderId
-                    ? { ...order, status: 'Completado' } // Cambia el estado a "Completado"
+                    ? { ...order, status: 'Pagado', isNewForAdmin: true } // Marca como 'Pagado' y asegura que sea 'isNewForAdmin'
                     : order
             )
         );
@@ -118,10 +120,10 @@ export const OrderProvider = ({ children }) => {
             getUserOrders,
             getOrderById,
             updateOrderStatus,
-            deleteOrder,
+            deleteOrder, 
             getPendingOrdersCount,
             markOrderAsReviewed,
-            markOrderAsPaid // <-- Asegúrate de exportar esta nueva función
+            markOrderAsPaid
         }}>
             {children}
         </OrderContext.Provider>
