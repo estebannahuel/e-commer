@@ -1,13 +1,30 @@
 // src/App.jsx
 import React from 'react';
-import AppRouter from './routes/AppRouter'; // Importa tu router principal
-import 'bootstrap/dist/css/bootstrap.min.css';
-import 'bootstrap-icons/font/bootstrap-icons.css';
-import './index.css'; // Tu CSS personalizado
+import AppRouter from './routes/AppRouter';
+import './index.css';
+
+// Importa todos los proveedores de contexto
+import { AuthProvider } from './contexts/AuthContext';
+import { CartProvider } from './contexts/CartContext';
+import { ProductProvider } from './contexts/ProductContext';
+import { OrderProvider } from './contexts/OrderContext';
+import { ReviewProvider } from './contexts/ReviewContext'; // <--- NUEVO IMPORTE
 
 function App() {
   return (
-    <AppRouter /> // Simplemente renderiza tu AppRouter
+    <AuthProvider>
+      {/* ReviewProvider debe envolver a ProductProvider porque ProductProvider lo usa */}
+      <ReviewProvider>
+        <ProductProvider>
+          {/* CartProvider y OrderProvider pueden ir después de ProductProvider */}
+          <CartProvider>
+            <OrderProvider>
+              <AppRouter />
+            </OrderProvider>
+          </CartProvider>
+        </ProductProvider>
+      </ReviewProvider>
+    </AuthProvider>
   );
 }
 

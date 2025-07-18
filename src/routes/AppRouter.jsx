@@ -1,91 +1,83 @@
-// src/routes/AppRouter.jsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
-// Componentes de Layout
-import Header from '../components/Header';
-import Footer from '../components/Footer';
+// Importaciones corregidas para componentes y páginas (Mantengo tus rutas relativas)
+import PrivateRoute from '../components/PrivateRoute';
+import Layout from '../components/Layout';
 
-// Páginas de Usuario
-import HomePage from '../pages/user/HomePage';
-import ProductsPage from '../pages/user/ProductsPage';
-import ProductDetailPage from '../pages/user/ProductDetailPage';
-import CartPage from '../pages/user/CartPage';
-import UserProfilePage from '../pages/user/UserProfilePage';
-
-// NUEVAS PÁGINAS DE USUARIO PARA CHECKOUT Y ÓRDENES
-import CheckoutPage from '../pages/user/CheckoutPage';
-import CheckoutSuccessPage from '../pages/user/CheckoutSuccessPage';
-import MyOrdersPage from '../pages/user/MyOrdersPage';
+// Páginas Públicas/Generales
+import HomePage from '../pages/HomePage';
+import ProductListPage from '../pages/ProductListPage';
+import ProductDetailPage from '../pages/ProductDetailPage';
+import CheckoutSuccessPage from '../pages/CheckoutSuccessPage';
 
 // Páginas de Autenticación
 import LoginPage from '../pages/auth/LoginPage';
-import RegisterPage from '../pages/auth/RegisterPage.jsx'; // <<-- ESTA RUTA ES LA QUE DEBES VERIFICAR FÍSICAMENTE EN TU PROYECTO
+import RegisterPage from '../pages/auth/RegisterPage.jsx';
 
-// Páginas de Administración
+// Páginas de Usuario (requieren autenticación)
+import CartPage from '../pages/user/CartPage';
+import CheckoutPage from '../pages/user/CheckoutPage';
+import UserProfilePage from '../pages/user/UserProfilePage';
+import UserOrdersPage from '../pages/user/UserOrdersPage';
+
+// Páginas de Administración (requieren rol de administrador)
 import AdminDashboard from '../pages/admin/AdminDashboard';
 import ManageProducts from '../pages/admin/ManageProducts';
 import ManageOrders from '../pages/admin/ManageOrders';
 import ManageUsers from '../pages/admin/ManageUsers';
+// NUEVA IMPORTACIÓN para el formulario de productos
+import ProductFormPage from '../pages/admin/ProductFormPage'; // ¡Asegúrate de que la ruta sea correcta!
 
-// Página de Error
-import NotFoundPage from '../pages/NotFoundPage';
-
-// Componentes y Contextos de Autenticación
-import { AuthProvider } from '../contexts/AuthContext';
-import ProtectedRoute from '../components/ProtectedRoute';
-
-// Otros Context Providers
-import { ProductProvider } from '../contexts/ProductContext';
-import { CartProvider } from '../contexts/CartContext';
-import { OrderProvider } from '../contexts/OrderContext';
+// NUEVA IMPORTACIÓN: Página de Análisis de Productos
+import ProductAnalysisPage from '../pages/admin/ProductAnalysisPage'; // <--- ¡NUEVA LÍNEA!
 
 const AppRouter = () => {
     return (
         <Router>
-            <AuthProvider>
-                <ProductProvider>
-                    <CartProvider>
-                        <OrderProvider>
+            <Routes>
+                {/* Rutas con Layout (Header, Footer, etc.) */}
+                <Route path="/" element={<Layout />}>
+                    <Route index element={<HomePage />} /> {/* Ruta principal */}
+                    <Route path="productos" element={<ProductListPage />} />
+                    {/* Nota: tu ruta es "producto/:productId" (singular), lo he mantenido. En mi ejemplo anterior usé "productos/:productId" (plural) */}
+                    <Route path="producto/:productId" element={<ProductDetailPage />} />
+                    <Route path="checkout/success" element={<CheckoutSuccessPage />} />
 
-                            <Header />
-                            <main style={{ minHeight: '80vh' }} className="py-4">
-                                <Routes>
-                                    {/* Rutas Públicas */}
-                                    <Route path="/" element={<HomePage />} />
-                                    <Route path="/productos" element={<ProductsPage />} />
-                                    <Route path="/producto/:id" element={<ProductDetailPage />} />
-                                    <Route path="/login" element={<LoginPage />} />
-                                    <Route path="/register" element={<RegisterPage />} />
+                    {/* Rutas de Autenticación */}
+                    <Route path="login" element={<LoginPage />} />
+                    <Route path="register" element={<RegisterPage />} />
 
-                                    {/* Rutas Protegidas para usuarios y administradores */}
-                                    <Route element={<ProtectedRoute allowedRoles={['user', 'admin']} />}>
-                                        <Route path="/carrito" element={<CartPage />} />
-                                        <Route path="/perfil" element={<UserProfilePage />} />
-                                        {/* NUEVAS RUTAS PROTEGIDAS */}
-                                        <Route path="/checkout" element={<CheckoutPage />} />
-                                        <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
-                                        <Route path="/mis-ordenes" element={<MyOrdersPage />} />
-                                    </Route>
+                    {/* Rutas Protegidas para Usuario (rol 'user' o 'admin') */}
+                    <Route element={<PrivateRoute allowedRoles={['user', 'admin']} />}>
+                        <Route path="carrito" element={<CartPage />} />
+                        <Route path="checkout" element={<CheckoutPage />} />
+                        <Route path="perfil" element={<UserProfilePage />} />
+                        <Route path="mis-ordenes" element={<UserOrdersPage />} />
+                    </Route>
 
-                                    {/* Rutas de Administración (Solo para admins) */}
-                                    <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-                                        <Route path="/admin" element={<AdminDashboard />} />
-                                        <Route path="/admin/productos" element={<ManageProducts />} />
-                                        <Route path="/admin/ordenes" element={<ManageOrders />} />
-                                        <Route path="/admin/usuarios" element={<ManageUsers />} />
-                                    </Route>
+                    {/* Rutas Protegidas para Administrador (rol 'admin') */}
+                    <Route element={<PrivateRoute allowedRoles={['admin']} />}>
+                        {/* Ruta para el Dashboard del Admin (ya la tenías) */}
+                        <Route path="admin" element={<AdminDashboard />} />
+                        {/* Ruta para gestionar productos (tu ya tenías ManageProducts, esta será la lista) */}
+                        <Route path="admin/productos" element={<ManageProducts />} />
+                        {/* NUEVA RUTA: Para añadir un nuevo producto */}
+                        <Route path="admin/products/new" element={<ProductFormPage />} />
+                        {/* NUEVA RUTA: Para editar un producto existente */}
+                        <Route path="admin/products/edit/:productId" element={<ProductFormPage />} />
 
-                                    {/* Ruta para 404 */}
-                                    <Route path="*" element={<NotFoundPage />} />
-                                </Routes>
-                            </main>
-                            <Footer />
+                        {/* Rutas de gestión de órdenes y usuarios (ya las tenías) */}
+                        <Route path="admin/ordenes" element={<ManageOrders />} />
+                        <Route path="admin/usuarios" element={<ManageUsers />} />
 
-                        </OrderProvider>
-                    </CartProvider>
-                </ProductProvider>
-            </AuthProvider>
+                        {/* NUEVA RUTA para la página de Análisis de Productos */}
+                        <Route path="admin/product-analysis" element={<ProductAnalysisPage />} /> {/* <--- ¡NUEVA LÍNEA! */}
+                    </Route>
+                    {/* Ruta para 404 (puedes descomentar y crear NotFoundPage.jsx si la necesitas) */}
+                    {/* <Route path="*" element={<NotFoundPage />} /> */}
+                </Route>
+            </Routes>
         </Router>
     );
 };

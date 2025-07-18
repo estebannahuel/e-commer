@@ -1,202 +1,206 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Table, Button, Form, Dropdown, Alert, ListGroup, Modal } from 'react-bootstrap';
+import { Container, Row, Col, Card, Table, Button, Form, Modal, Badge, NavDropdown, Alert, ListGroup } from 'react-bootstrap';
 import AdminSidebar from '../../components/AdminSidebar';
 import { useOrders } from '../../contexts/OrderContext';
+import { useAuth } from '../../contexts/AuthContext'; // <--- ¡NUEVA IMPORTACIÓN! Para obtener la lista de usuarios
 
 const ManageOrders = () => {
-    const { orders, updateOrderStatus, deleteOrder, markOrderAsReviewed } = useOrders();
+    const { orders, getAllOrders, updateOrderStatus } = useOrders();
+    const { allUsers } = useAuth(); // <--- ¡NUEVO: Obtener allUsers del AuthContext!
+
     const [filterStatus, setFilterStatus] = useState('Todas');
-    const [showDetailModal, setShowDetailModal] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
+    const [showModal, setShowModal] = useState(false);
 
-    // Filtrar órdenes basadas en el estado seleccionado
-    // Si el filtro es 'Pendiente', ahora solo mostramos los que son 'Pendiente' Y 'isNewForAdmin: true'
-    const filteredOrders = orders.filter(order => {
-        if (filterStatus === 'Todas') {
-            return true;
-        }
-        // Si el filtro es 'Pendiente', incluimos la condición de isNewForAdmin
-        if (filterStatus === 'Pendiente') {
-            return order.status === 'Pendiente' && order.isNewForAdmin;
-        }
-        // Para otros estados, solo se filtra por status
-        return order.status === filterStatus;
-    });
+    // No necesitas este useEffect si getAllOrders no tiene dependencias externas
+    // useEffect(() => {
+    //     if (typeof getAllOrders === 'function') {
+    //         getAllOrders();
+    //     }
+    // }, [getAllOrders]);
 
-
-    const handleStatusChange = (orderId, newStatus) => {
-        updateOrderStatus(orderId, newStatus);
-        // Opcional: mostrar un mensaje de éxito
+    // Obtener el nombre de usuario para mostrarlo en la tabla de órdenes
+    const getUserName = (userId) => {
+        // MODIFICADO: Ahora busca en la lista de usuarios obtenida del AuthContext
+        const user = allUsers.find(u => u.id === userId);
+        return user ? user.username : 'Usuario Desconocido';
     };
 
-    const handleDeleteOrder = (orderId) => {
-        if (window.confirm(`¿Estás seguro de que quieres eliminar la orden ${orderId}? Esta acción no se puede deshacer.`)) {
-            deleteOrder(orderId);
-            // Opcional: mostrar un mensaje de éxito
-        }
-    };
-
-    const handleMarkAsReviewed = (orderId) => {
-        markOrderAsReviewed(orderId);
-        // Opcional: mostrar un toast de éxito
+    const handleStatusChange = (e) => {
+        setFilterStatus(e.target.value);
     };
 
     const getStatusVariant = (status) => {
         switch (status) {
             case 'Pendiente': return 'warning';
-            case 'En Proceso': return 'primary';
+            case 'En Proceso': return 'info';
             case 'Completado': return 'success';
-            case 'Enviado': return 'info';
-            case 'Entregado': return 'dark';
             case 'Cancelado': return 'danger';
             default: return 'secondary';
         }
     };
 
-    // Funciones para el modal de detalles de la orden
-    const handleShowDetailModal = (order) => {
+    const filteredOrders = orders.filter(order => {
+        if (filterStatus === 'Todas') {
+            return true;
+        }
+        return order.status === filterStatus;
+    });
+
+    const handleShowOrderDetails = (order) => {
         setSelectedOrder(order);
-        setShowDetailModal(true);
+        setShowModal(true);
     };
 
-    const handleCloseDetailModal = () => {
+    const handleCloseModal = () => {
+        setShowModal(false);
         setSelectedOrder(null);
-        setShowDetailModal(false);
+    };
+
+    const handleUpdateStatus = (orderId, newStatus) => {
+        if (window.confirm(`¿Estás seguro de cambiar el estado de la orden ${orderId} a "${newStatus}"?`)) {
+            updateOrderStatus(orderId, newStatus);
+            if (selectedOrder && selectedOrder.id === orderId) {
+                setSelectedOrder(prev => ({ ...prev, status: newStatus }));
+            }
+        }
     };
 
     return (
-        <Container fluid className="p-0 min-vh-100 bg-light">
-            <Row className="g-0">
-                <Col md={2}>
+        <Container fluid className="admin-container">
+            <Row>
+                <Col md={3} className="p-0">
                     <AdminSidebar />
                 </Col>
-                <Col md={10} className="p-4">
-                    <Container className="my-5 p-4 rounded shadow-sm border border-light bg-white">
-                        <h1 className="text-center mb-4 text-primary display-4 fw-bold">
-                            <i className="bi bi-receipt-cutoff me-3"></i> Gestión de Órdenes
-                        </h1>
-                        <p className="lead text-secondary text-center mb-5">
-                            Revisa, actualiza y gestiona el estado de los pedidos de tus clientes.
-                        </p>
+                <Col md={9} className="p-4">
+                    <h1 className="mb-4 text-primary display-5 fw-bold">
+                        <i className="bi bi-receipt me-3"></i> Gestión de Órdenes
+                    </h1>
+                    <p className="lead text-secondary mb-4">
+                        Revisa y gestiona todas las órdenes realizadas por los usuarios.
+                    </p>
 
-                        <Row className="mb-4 align-items-center">
-                            <Col xs={6}>
-                                <h4 className="mb-0 text-primary">Total Órdenes: {filteredOrders.length}</h4>
-                            </Col>
-                            <Col xs={6} className="text-end">
-                                <Dropdown>
-                                    <Dropdown.Toggle variant="outline-primary" id="dropdown-basic">
-                                        Filtrar por Estado: **{filterStatus}**
-                                    </Dropdown.Toggle>
-                                    <Dropdown.Menu>
-                                        <Dropdown.Item onClick={() => setFilterStatus('Todas')}>Todas</Dropdown.Item>
-                                        <Dropdown.Item onClick={() => setFilterStatus('Pendiente')}>Pendiente (Nuevos)</Dropdown.Item> {/* Cambiado el texto */}
-                                        <Dropdown.Item onClick={() => setFilterStatus('En Proceso')}>En Proceso</Dropdown.Item>
-                                        <Dropdown.Item onClick={() => setFilterStatus('Completado')}>Completado (Pago Recibido)</Dropdown.Item>
-                                        <Dropdown.Item onClick={() => setFilterStatus('Enviado')}>Enviado (Paquete Preparado)</Dropdown.Item>
-                                        <Dropdown.Item onClick={() => setFilterStatus('Entregado')}>Entregado</Dropdown.Item>
-                                        <Dropdown.Item onClick={() => setFilterStatus('Cancelado')}>Cancelado</Dropdown.Item>
-                                    </Dropdown.Menu>
-                                </Dropdown>
-                            </Col>
-                        </Row>
+                    <Card className="shadow-sm border-0 mb-4">
+                        <Card.Header className="bg-dark text-white fs-5">Filtro de Órdenes</Card.Header>
+                        <Card.Body>
+                            <Form.Group controlId="filterStatus">
+                                <Form.Label>Filtrar por Estado:</Form.Label>
+                                <Form.Control as="select" onChange={handleStatusChange} value={filterStatus}>
+                                    <option value="Todas">Todas</option>
+                                    <option value="Pendiente">Pendiente</option>
+                                    <option value="En Proceso">En Proceso</option>
+                                    <option value="Completado">Completado</option>
+                                    <option value="Cancelado">Cancelado</option>
+                                </Form.Control>
+                            </Form.Group>
+                        </Card.Body>
+                    </Card>
 
-                        {filteredOrders.length === 0 ? (
-                            <Alert variant="info" className="text-center">No hay órdenes para mostrar con este filtro.</Alert>
-                        ) : (
-                            <Table striped bordered hover responsive className="shadow-sm">
-                                <thead className="table-dark">
-                                    <tr>
-                                        <th>ID Orden</th>
-                                        <th>Usuario</th>
-                                        <th>Fecha</th>
-                                        <th>Total</th>
-                                        <th>Estado</th>
-                                        <th>Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredOrders.map(order => (
-                                        // Resalta solo los pedidos que son 'Pendiente' Y 'isNewForAdmin: true'
-                                        <tr key={order.id} className={order.status === 'Pendiente' && order.isNewForAdmin ? 'table-warning' : ''}>
-                                            <td>{order.id}</td>
-                                            <td>{order.userName}</td>
-                                            <td>{order.date}</td>
-                                            <td>${order.total.toFixed(2)}</td>
-                                            <td>
-                                                <Button variant={getStatusVariant(order.status)} size="sm" disabled>
-                                                    {order.status} {order.isNewForAdmin && order.status === 'Pendiente' && '(Nuevo)'} {/* Añade "(Nuevo)" al estado si es el caso */}
-                                                </Button>
-                                            </td>
-                                            <td>
-                                                {/* Botón "Marcar como Revisado" solo si es Pendiente Y no ha sido revisado por el admin */}
-                                                {order.status === 'Pendiente' && order.isNewForAdmin && (
+                    <Card className="shadow-sm border-0">
+                        <Card.Header className="bg-dark text-white fs-5">Lista de Órdenes</Card.Header>
+                        <Card.Body>
+                            {filteredOrders.length === 0 ? (
+                                <Alert variant="info" className="text-center">
+                                    No se encontraron órdenes con el estado seleccionado.
+                                </Alert>
+                            ) : (
+                                <Table striped bordered hover responsive className="text-center">
+                                    <thead className="table-light">
+                                        <tr>
+                                            <th>ID Orden</th>
+                                            <th>Usuario</th>
+                                            <th>Fecha</th>
+                                            <th>Total</th>
+                                            <th>Estado</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredOrders.map(order => (
+                                            <tr key={order.id}>
+                                                <td>{order.id}</td>
+                                                {/* Aseguramos que allUsers no sea null o undefined antes de llamar a getUserName */}
+                                                <td>{allUsers && getUserName(order.userId)}</td>
+                                                <td>{order.date}</td>
+                                                <td>${order.total.toFixed(2)}</td>
+                                                <td>
+                                                    <Badge bg={getStatusVariant(order.status)} className="p-2">
+                                                        {order.status}
+                                                    </Badge>
+                                                </td>
+                                                <td>
                                                     <Button
-                                                        variant="outline-success"
+                                                        variant="info"
                                                         size="sm"
                                                         className="me-2"
-                                                        onClick={() => handleMarkAsReviewed(order.id)}
+                                                        onClick={() => handleShowOrderDetails(order)}
                                                     >
-                                                        <i className="bi bi-check-circle-fill me-1"></i> Marcar como Revisado
+                                                        <i className="bi bi-eye-fill"></i> Ver
                                                     </Button>
-                                                )}
-                                                <Dropdown className="me-2 d-inline-block">
-                                                    <Dropdown.Toggle variant="secondary" size="sm" id={`dropdown-status-${order.id}`}>
-                                                        Cambiar Estado
-                                                    </Dropdown.Toggle>
-                                                    <Dropdown.Menu>
-                                                        <Dropdown.Item onClick={() => handleStatusChange(order.id, 'Pendiente')}>Pendiente</Dropdown.Item>
-                                                        <Dropdown.Item onClick={() => handleStatusChange(order.id, 'En Proceso')}>En Proceso</Dropdown.Item>
-                                                        <Dropdown.Item onClick={() => handleStatusChange(order.id, 'Completado')}>Completado (Pago Recibido)</Dropdown.Item>
-                                                        <Dropdown.Item onClick={() => handleStatusChange(order.id, 'Enviado')}>Enviado (Paquete Preparado)</Dropdown.Item>
-                                                        <Dropdown.Item onClick={() => handleStatusChange(order.id, 'Entregado')}>Entregado</Dropdown.Item>
-                                                        <Dropdown.Item onClick={() => handleStatusChange(order.id, 'Cancelado')}>Cancelado</Dropdown.Item>
-                                                    </Dropdown.Menu>
-                                                </Dropdown>
-                                                <Button variant="info" size="sm" className="me-2" onClick={() => handleShowDetailModal(order)}>
-                                                    <i className="bi bi-eye-fill"></i>
-                                                </Button>
-                                                <Button variant="danger" size="sm" onClick={() => handleDeleteOrder(order.id)}>
-                                                    <i className="bi bi-trash-fill"></i>
-                                                </Button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </Table>
-                        )}
-                    </Container>
+                                                    <NavDropdown
+                                                        title="Cambiar Estado"
+                                                        id={`dropdown-status-${order.id}`}
+                                                        variant="secondary"
+                                                        size="sm"
+                                                        align="end"
+                                                    >
+                                                        <NavDropdown.Item onClick={() => handleUpdateStatus(order.id, 'Pendiente')}>Pendiente</NavDropdown.Item>
+                                                        <NavDropdown.Item onClick={() => handleUpdateStatus(order.id, 'En Proceso')}>En Proceso</NavDropdown.Item>
+                                                        <NavDropdown.Item onClick={() => handleUpdateStatus(order.id, 'Completado')}>Completado</NavDropdown.Item>
+                                                        <NavDropdown.Item onClick={() => handleUpdateStatus(order.id, 'Cancelado')}>Cancelado</NavDropdown.Item>
+                                                    </NavDropdown>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </Table>
+                            )}
+                        </Card.Body>
+                    </Card>
+
+                    {/* Modal de Detalles de la Orden */}
+                    <Modal show={showModal} onHide={handleCloseModal} centered size="lg">
+                        <Modal.Header closeButton className="bg-primary text-white">
+                            <Modal.Title>Detalles de la Orden: {selectedOrder?.id}</Modal.Title>
+                        </Modal.Header>
+                        <Modal.Body>
+                            {selectedOrder && (
+                                <div>
+                                    <h5>Información General</h5>
+                                    <p><strong>Usuario:</strong> {allUsers && getUserName(selectedOrder.userId)}</p>
+                                    <p><strong>Fecha:</strong> {selectedOrder.date}</p>
+                                    <p><strong>Estado:</strong> <Badge bg={getStatusVariant(selectedOrder.status)}>{selectedOrder.status}</Badge></p>
+                                    <p><strong>Total:</strong> ${selectedOrder.total.toFixed(2)}</p>
+
+                                    <h5 className="mt-4">Productos Incluidos</h5>
+                                    <ListGroup className="mb-3">
+                                        {selectedOrder.items.map((item, index) => (
+                                            <ListGroup.Item key={index} className="d-flex justify-content-between">
+                                                <span>{item.name} (x{item.quantity})</span>
+                                                <span>${(item.price * item.quantity).toFixed(2)}</span>
+                                            </ListGroup.Item>
+                                        ))}
+                                    </ListGroup>
+
+                                    <h5 className="mt-4">Información de Envío</h5>
+                                    <p><strong>Dirección:</strong> {selectedOrder.shippingInfo?.shippingAddress}</p>
+                                    <p><strong>Ciudad:</strong> {selectedOrder.shippingInfo?.city}</p>
+                                    <p><strong>Código Postal:</strong> {selectedOrder.shippingInfo?.postalCode}</p>
+                                    <p><strong>País:</strong> {selectedOrder.shippingInfo?.country}</p>
+
+                                    <h5 className="mt-4">Método de Pago</h5>
+                                    <p>{selectedOrder.paymentMethod || 'No especificado'}</p>
+                                </div>
+                            )}
+                        </Modal.Body>
+                        <Modal.Footer>
+                            <Button variant="secondary" onClick={handleCloseModal}>
+                                Cerrar
+                            </Button>
+                        </Modal.Footer>
+                    </Modal>
                 </Col>
             </Row>
-
-            {/* Modal de Detalles de la Orden */}
-            <Modal show={showDetailModal} onHide={handleCloseDetailModal} size="lg">
-                <Modal.Header closeButton>
-                    <Modal.Title>Detalles de la Orden {selectedOrder?.id}</Modal.Title>
-                </Modal.Header>
-                <Modal.Body>
-                    {selectedOrder && (
-                        <div>
-                            <p><strong>Usuario:</strong> {selectedOrder.userName}</p>
-                            <p><strong>Fecha:</strong> {selectedOrder.date}</p>
-                            <p><strong>Total:</strong> ${selectedOrder.total.toFixed(2)}</p>
-                            <p><strong>Estado:</strong> <Button variant={getStatusVariant(selectedOrder.status)} size="sm" disabled>{selectedOrder.status}</Button></p>
-                            <h5>Artículos:</h5>
-                            <ListGroup variant="flush">
-                                {selectedOrder.items.map((item, index) => (
-                                    <ListGroup.Item key={index}>
-                                        {item.name} (x{item.quantity}) - ${item.price.toFixed(2)}
-                                    </ListGroup.Item>
-                                ))}
-                            </ListGroup>
-                        </div>
-                    )}
-                </Modal.Body>
-                <Modal.Footer>
-                    <Button variant="secondary" onClick={handleCloseDetailModal}>Cerrar</Button>
-                </Modal.Footer>
-            </Modal>
-
         </Container>
     );
 };

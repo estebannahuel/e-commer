@@ -1,97 +1,186 @@
-// src/pages/user/UserProfilePage.jsx
-import React from 'react';
-import { Container, Row, Col, Card, ListGroup, Badge } from 'react-bootstrap';
-import { useAuth } from '../../contexts/AuthContext';
-import { useOrders } from '../../contexts/OrderContext';
-import { useProducts } from '../../contexts/ProductContext'; // Para obtener detalles de productos si es necesario
+import React, { useState, useEffect } from 'react';
+import { Container, Row, Col, Card, Form, Button, Alert, ListGroup } from 'react-bootstrap';
+import { useAuth } from '../../contexts/AuthContext'; // Para obtener y actualizar el usuario
+import { useNavigate } from 'react-router-dom';
 
 const UserProfilePage = () => {
-    const { user, isAuthenticated } = useAuth();
-    const { getUserOrders } = useOrders();
-    const { products } = useProducts(); // Aunque no se usa directamente en este ejemplo, es útil tenerlo
+    const { user, isAuthenticated, updateUserProfile } = useAuth(); // Obtiene el usuario logeado y la función para actualizar
+    const navigate = useNavigate();
 
-    // Si el usuario no está autenticado o no hay datos de usuario, redirigir o mostrar mensaje
-    if (!isAuthenticated || !user) {
+    const [formData, setFormData] = useState({
+        username: '',
+        email: '',
+        phone: '',
+        address: ''
+    });
+    const [isEditing, setIsEditing] = useState(false);
+    const [error, setError] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
+
+    // Redirigir si no está autenticado
+    useEffect(() => {
+        if (!isAuthenticated) {
+            navigate('/login');
+        }
+    }, [isAuthenticated, navigate]);
+
+    // Cargar los datos del usuario en el formulario cuando el componente se monta o el usuario cambia
+    useEffect(() => {
+        if (user) {
+            setFormData({
+                username: user.username || '',
+                email: user.email || '',
+                phone: user.phone || '',
+                address: user.address || ''
+            });
+        }
+    }, [user]);
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        setError('');
+        setSuccessMessage('');
+
+        // Validaciones básicas
+        if (!formData.username || !formData.email) {
+            setError('El nombre de usuario y el email son campos obligatorios.');
+            return;
+        }
+
+        try {
+            updateUserProfile(user.id, formData); // Llama a la función del contexto para actualizar
+            setSuccessMessage('Perfil actualizado exitosamente.');
+            setIsEditing(false); // Desactivar modo edición
+            // En un caso real, podrías querer recargar los datos del usuario desde el backend
+            // o asegurarte de que el contexto los actualice correctamente.
+        } catch (err) {
+            setError('Error al actualizar el perfil.');
+            console.error('Error updating profile:', err);
+        }
+    };
+
+    if (!user) {
         return (
-            <Container className="my-5 text-center">
-                <h2>Necesitas iniciar sesión para ver tu perfil.</h2>
-                <p>Por favor, <Link to="/login">inicia sesión</Link> o <Link to="/register">regístrate</Link>.</p>
+            <Container className="text-center my-5">
+                <div className="spinner-border text-primary" role="status">
+                    <span className="visually-hidden">Cargando perfil...</span>
+                </div>
+                <p className="mt-2">Cargando perfil de usuario...</p>
             </Container>
         );
     }
-
-    // Obtener las órdenes del usuario logueado
-    const userOrders = getUserOrders(user.id);
 
     return (
         <Container fluid className="p-0 bg-light text-dark min-vh-100">
             <Container className="my-5 p-4 rounded shadow-sm border border-light bg-white">
                 <h1 className="text-center mb-4 text-primary display-4 fw-bold">
-                    <i className="bi bi-person-circle me-3"></i> Mi Perfil ({user.username})
+                    <i className="bi bi-person-circle me-3"></i> Mi Perfil
                 </h1>
                 <p className="lead text-secondary text-center mb-5">
-                    Aquí puedes ver la información de tu cuenta y el historial de tus compras.
+                    Gestiona la información de tu cuenta.
                 </p>
 
-                <Row className="mb-5">
-                    <Col md={6}>
-                        <Card className="shadow-sm border-0 h-100">
-                            <Card.Header className="bg-primary text-white fs-5">
-                                <i className="bi bi-info-circle me-2"></i> Información de la Cuenta
-                            </Card.Header>
-                            <Card.Body>
-                                <ListGroup variant="flush">
-                                    <ListGroup.Item><strong>ID de Usuario:</strong> {user.id}</ListGroup.Item>
-                                    <ListGroup.Item><strong>Nombre de Usuario:</strong> {user.username}</ListGroup.Item>
-                                    <ListGroup.Item><strong>Rol:</strong> {user.role}</ListGroup.Item>
-                                    <ListGroup.Item><strong>Teléfono:</strong> {user.phone || 'N/A'}</ListGroup.Item>
-                                </ListGroup>
-                            </Card.Body>
-                        </Card>
-                    </Col>
-                    <Col md={6}>
-                        <Card className="shadow-sm border-0 h-100">
-                            <Card.Header className="bg-success text-white fs-5">
-                                <i className="bi bi-bag-check me-2"></i> Mis Compras
-                            </Card.Header>
-                            <Card.Body>
-                                {userOrders.length > 0 ? (
-                                    <ListGroup variant="flush">
-                                        {userOrders.map(order => (
-                                            <ListGroup.Item key={order.id} className="d-flex justify-content-between align-items-center flex-wrap">
-                                                <div>
-                                                    <strong>Orden #{order.id}</strong> ({order.date}) - Total: ${order.total.toFixed(2)}
-                                                    <div className="mt-1">
-                                                        <small className="text-muted">Estado: <Badge bg={order.status === "Completado" ? "success" : "warning"}>{order.status}</Badge></small>
-                                                    </div>
-                                                    <ul className="list-unstyled mt-2 mb-0">
-                                                        {order.items.map((item, index) => (
-                                                            <li key={index}>
-                                                                {item.name} (x{item.quantity}) - ${item.price.toFixed(2)} c/u
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                            </ListGroup.Item>
-                                        ))}
-                                    </ListGroup>
-                                ) : (
-                                    <p className="text-center text-muted">Aún no has realizado ninguna compra.</p>
+                {error && <Alert variant="danger">{error}</Alert>}
+                {successMessage && <Alert variant="success">{successMessage}</Alert>}
+
+                <Row className="justify-content-center">
+                    <Col lg={8}>
+                        <Card className="shadow-sm border-0">
+                            <Card.Header className="bg-dark text-white fs-5 d-flex justify-content-between align-items-center">
+                                <span>Detalles de la Cuenta</span>
+                                {!isEditing && (
+                                    <Button variant="outline-light" size="sm" onClick={() => setIsEditing(true)}>
+                                        <i className="bi bi-pencil-fill me-2"></i> Editar Perfil
+                                    </Button>
                                 )}
+                            </Card.Header>
+                            <Card.Body>
+                                <Form onSubmit={handleSubmit}>
+                                    <Form.Group className="mb-3" controlId="username">
+                                        <Form.Label>Nombre de Usuario</Form.Label>
+                                        <Form.Control
+                                            type="text"
+                                            name="username"
+                                            value={formData.username}
+                                            onChange={handleChange}
+                                            readOnly={!isEditing}
+                                            required
+                                        />
+                                    </Form.Group>
+
+                                    <Form.Group className="mb-3" controlId="email">
+                                        <Form.Label>Email</Form.Label>
+                                        <Form.Control
+                                            type="email"
+                                            name="email"
+                                            value={formData.email}
+                                            onChange={handleChange}
+                                            readOnly={!isEditing}
+                                            required
+                                        />
+                                    </Form.Group>
+
+                                    <Form.Group className="mb-3" controlId="phone">
+                                        <Form.Label>Teléfono</Form.Label>
+                                        <Form.Control
+                                            type="tel"
+                                            name="phone"
+                                            value={formData.phone}
+                                            onChange={handleChange}
+                                            readOnly={!isEditing}
+                                        />
+                                    </Form.Group>
+
+                                    <Form.Group className="mb-3" controlId="address">
+                                        <Form.Label>Dirección</Form.Label>
+                                        <Form.Control
+                                            type="text"
+                                            name="address"
+                                            value={formData.address}
+                                            onChange={handleChange}
+                                            readOnly={!isEditing}
+                                        />
+                                    </Form.Group>
+
+                                    {isEditing && (
+                                        <div className="d-flex justify-content-end mt-4">
+                                            <Button variant="secondary" onClick={() => { setIsEditing(false); setFormData({username: user.username, email: user.email, phone: user.phone, address: user.address}); setError(''); setSuccessMessage(''); }} className="me-2">
+                                                Cancelar
+                                            </Button>
+                                            <Button variant="primary" type="submit">
+                                                Guardar Cambios
+                                            </Button>
+                                        </div>
+                                    )}
+                                </Form>
                             </Card.Body>
                         </Card>
                     </Col>
                 </Row>
-                <Row className="mt-5">
-                    <Col>
+
+                <Row className="justify-content-center mt-5">
+                    <Col lg={8}>
                         <Card className="shadow-sm border-0">
                             <Card.Header className="bg-info text-white fs-5">
-                                <i className="bi bi-star-fill me-2"></i> Mis Valoraciones de Productos
+                                Acciones Rápidas
                             </Card.Header>
                             <Card.Body>
-                                <p className="text-center text-muted">
-                                    Esta sección está preparada para ser expandida si decides implementar un sistema de reseñas más detallado por usuario.
-                                </p>
+                                <ListGroup variant="flush">
+                                    <ListGroup.Item action as={Button} onClick={() => navigate('/mis-ordenes')} className="d-flex justify-content-between align-items-center">
+                                        Ver Mis Órdenes <i className="bi bi-receipt"></i>
+                                    </ListGroup.Item>
+                                    <ListGroup.Item action as={Button} onClick={() => navigate('/carrito')} className="d-flex justify-content-between align-items-center">
+                                        Ir a mi Carrito <i className="bi bi-cart"></i>
+                                    </ListGroup.Item>
+                                </ListGroup>
                             </Card.Body>
                         </Card>
                     </Col>

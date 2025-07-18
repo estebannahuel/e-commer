@@ -1,124 +1,137 @@
-// src/contexts/OrderContext.jsx
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import initialOrdersData from '../data/orders.json';
-import { useAuth } from './AuthContext';
-import { useProducts } from './ProductContext';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import useLocalStorage from '../hooks/useLocalStorage';
+import ordersData from '../data/orders.json';
 
 const OrderContext = createContext(null);
 
 export const OrderProvider = ({ children }) => {
-    const [orders, setOrders] = useLocalStorage('ecommerceOrders', () => {
-        // Asegúrate de que initialOrdersData sea un array. Si no lo es, usa un array vacío.
-        const dataToMap = Array.isArray(initialOrdersData) ? initialOrdersData : [];
-        return dataToMap.map(order => ({
-            ...order,
-            isNewForAdmin: order.isNewForAdmin !== undefined ? order.isNewForAdmin : false
-        }));
-    });
+    const [orders, setOrders] = useLocalStorage('ecommerceOrders', ordersData);
+    // NUEVA LÍNEA: Estado para las notificaciones
+    const [notifications, setNotifications] = useLocalStorage('ecommerceNotifications', []);
 
-    const { user } = useAuth();
-    const { incrementPurchaseCount } = useProducts();
+    // NUEVA FUNCIÓN: Para añadir una notificación
+    const addNotification = useCallback((userId, message, type = 'info', relatedOrderId = null) => {
+        const newNotification = {
+            id: `NOTIF${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // ID único
+            userId: userId,
+            message: message,
+            type: type, // 'info', 'success', 'warning', 'danger'
+            read: false,
+            timestamp: new Date().toISOString(),
+            relatedOrderId: relatedOrderId // Opcional: para enlazar a una orden
+        };
+        setNotifications(prevNotifications => [...prevNotifications, newNotification]);
+    }, [setNotifications]);
 
-    const placeOrder = (cartItems, total) => {
-        if (!user) {
-            console.error("No user logged in to place order.");
-            return null;
-        }
+    // Función para agregar una nueva orden
+    const addOrder = useCallback((userId, cartItems, shippingInfo, paymentMethod) => {
+        const newOrderId = `ORD${Date.now()}`;
+        const orderDate = new Date().toISOString().slice(0, 10);
+
+        const total = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
         const newOrder = {
-            id: `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-            userId: user.id,
-            userName: user.username,
-            date: new Date().toISOString().slice(0, 10),
-            status: "Pendiente",
-            isNewForAdmin: true,
-            total: total,
+            id: newOrderId,
+            userId: userId,
+            date: orderDate,
+            status: 'Pendiente', // Estado inicial de la orden
             items: cartItems.map(item => ({
                 productId: item.id,
                 name: item.name,
                 quantity: item.quantity,
                 price: item.price
-            }))
+            })),
+            shippingInfo: shippingInfo,
+            paymentMethod: paymentMethod,
+            total: total
         };
+
         setOrders(prevOrders => [...prevOrders, newOrder]);
+        // MODIFICADO: Añadir notificación al crear la orden
+        addNotification(userId, `Tu orden #${newOrderId} ha sido creada y está Pendiente.`, 'info', newOrderId);
+        return newOrderId;
+    }, [setOrders, addNotification]); // Dependencia addNotification
 
-        newOrder.items.forEach(item => {
-            incrementPurchaseCount(item.productId, item.quantity);
-        });
+    // Función para obtener las órdenes de un usuario específico
+    const getUserOrders = useCallback((userId) => {
+        return orders.filter(order => order.userId === userId);
+    }, [orders]);
 
-        return newOrder;
-    };
+    // Función para obtener todas las órdenes (útil para el admin)
+    const getAllOrders = useCallback(() => {
+        return orders;
+    }, [orders]);
 
-    const getUserOrders = (userId) => {
-        // Asegúrate de que 'orders' es un array antes de intentar filtrar
-        return Array.isArray(orders) ? orders.filter(order => order.userId === userId) : [];
-    };
-
-    const getOrderById = (orderId) => {
-        return Array.isArray(orders) ? orders.find(order => order.id === orderId) : undefined;
-    };
-
-    const updateOrderStatus = (orderId, newStatus) => {
-        setOrders(prevOrders =>
-            Array.isArray(prevOrders) ? prevOrders.map(order => {
+    // MODIFICADA: updateOrderStatus ahora también envía una notificación
+    const updateOrderStatus = useCallback((orderId, newStatus) => {
+        let updatedUserId = null; // Para guardar el userId de la orden actualizada
+        setOrders(prevOrders => {
+            return prevOrders.map(order => {
                 if (order.id === orderId) {
-                    const updatedOrder = { ...order, status: newStatus };
-                    if ((order.status === 'Pendiente' || order.status === 'Pagado') && newStatus !== 'Pendiente' && newStatus !== 'Pagado' && updatedOrder.isNewForAdmin) {
-                        updatedOrder.isNewForAdmin = false;
+                    updatedUserId = order.userId; // Capturar el userId
+                    // Definir el tipo de notificación basado en el estado
+                    let notificationType = 'info';
+                    let notificationMessage = `El estado de tu orden #${order.id} ha cambiado a: ${newStatus}.`;
+
+                    if (newStatus === 'Enviado') {
+                        notificationType = 'success';
+                        notificationMessage = `¡Tu orden #${order.id} ha sido enviada!`;
+                    } else if (newStatus === 'Completado') {
+                        notificationType = 'success';
+                        notificationMessage = `¡Tu orden #${order.id} ha sido entregada y completada!`;
+                    } else if (newStatus === 'Cancelado') {
+                        notificationType = 'danger';
+                        notificationMessage = `Tu orden #${order.id} ha sido cancelada.`;
                     }
-                    return updatedOrder;
+
+                    // Asegurarse de que el userId esté disponible para la notificación
+                    // y que addNotification esté disponible en las dependencias de useCallback
+                    addNotification(updatedUserId, notificationMessage, notificationType, order.id);
+                    return { ...order, status: newStatus };
                 }
                 return order;
-            }) : []
+            });
+        });
+    }, [setOrders, addNotification]); // Dependencia addNotification
+
+    // NUEVA FUNCIÓN: Para marcar una notificación como leída
+    const markNotificationAsRead = useCallback((notificationId) => {
+        setNotifications(prevNotifications =>
+            prevNotifications.map(notif =>
+                notif.id === notificationId ? { ...notif, read: true } : notif
+            )
         );
-    };
+    }, [setNotifications]);
 
-    const deleteOrder = (orderId) => {
-        setOrders(prevOrders => Array.isArray(prevOrders) ? prevOrders.filter(order => order.id !== orderId) : []);
-    };
+    // NUEVA FUNCIÓN: Para obtener las notificaciones de un usuario
+    const getUserNotifications = useCallback((userId) => {
+        return notifications.filter(notif => notif.userId === userId).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    }, [notifications]);
 
-    const getPendingOrdersCount = () => {
-        return Array.isArray(orders) ? orders.filter(order =>
-            (order.status === 'Pendiente' || order.status === 'Pagado') && order.isNewForAdmin
-        ).length : 0;
-    };
-
-    const markOrderAsReviewed = (orderId) => {
-        setOrders(prevOrders =>
-            Array.isArray(prevOrders) ? prevOrders.map(order =>
-                order.id === orderId && (order.status === 'Pendiente' || order.status === 'Pagado')
-                    ? { ...order, status: 'En Proceso', isNewForAdmin: false }
-                    : order
-            ) : []
-        );
-    };
-
-    const markOrderAsPaid = (orderId) => {
-        setOrders(prevOrders =>
-            Array.isArray(prevOrders) ? prevOrders.map(order =>
-                order.id === orderId
-                    ? { ...order, status: 'Pagado', isNewForAdmin: true }
-                    : order
-            ) : []
-        );
+    // MODIFICADO: Añadir nuevas funciones y estado al value del contexto
+    const value = {
+        orders,
+        addOrder,
+        getUserOrders,
+        getAllOrders,
+        updateOrderStatus,
+        notifications, // EXPOSED: Todas las notificaciones
+        addNotification, // EXPOSED: Función para añadir notificaciones manualmente (si fuera necesario)
+        markNotificationAsRead, // EXPOSED: Función para marcar como leída
+        getUserNotifications // EXPOSED: Función para obtener notificaciones por usuario
     };
 
     return (
-        <OrderContext.Provider value={{
-            orders,
-            placeOrder,
-            getUserOrders,
-            getOrderById,
-            updateOrderStatus,
-            deleteOrder, 
-            getPendingOrdersCount,
-            markOrderAsReviewed,
-            markOrderAsPaid
-        }}>
+        <OrderContext.Provider value={value}>
             {children}
         </OrderContext.Provider>
     );
 };
 
-export const useOrders = () => useContext(OrderContext);
+export const useOrders = () => {
+    const context = useContext(OrderContext);
+    if (context === undefined) {
+        throw new Error('useOrders must be used within an OrderProvider');
+    }
+    return context;
+};

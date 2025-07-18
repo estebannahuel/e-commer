@@ -1,78 +1,77 @@
-// src/contexts/AuthContext.jsx (Tu código actual es correcto, sin cambios necesarios para esta tarea)
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import initialUsersData from '../data/users.json'; // Asegúrate de que este archivo exista
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import useLocalStorage from '../hooks/useLocalStorage';
+import initialUsersData from '../data/users.json'; // Importa tus datos de usuarios iniciales
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useLocalStorage('currentUser', null);
-    const [allUsers, setAllUsers] = useLocalStorage('allUsers', initialUsersData);
+    const [isAuthenticated, setIsAuthenticated] = useState(!!user);
 
-    const navigate = useNavigate();
+    const [allUsers, setAllUsers] = useLocalStorage('allUsers', initialUsersData); // <-- Mantener esta línea
 
-    const login = (username, password) => {
+    useEffect(() => {
+        setIsAuthenticated(!!user);
+    }, [user]);
+
+    const login = useCallback((username, password) => {
         const foundUser = allUsers.find(
             u => u.username === username && u.password === password
         );
-
         if (foundUser) {
             setUser(foundUser);
             return true;
         }
         return false;
-    };
+    }, [allUsers, setUser]);
 
-    const register = (username, password, phone) => { // Añadido 'phone'
-        if (allUsers.some(u => u.username === username)) {
-            return false;
+    const register = useCallback((newUserData) => {
+        const usernameExists = allUsers.some(u => u.username === newUserData.username);
+        if (usernameExists) {
+            return { success: false, message: "El nombre de usuario ya existe." };
         }
 
+        const newUserId = `user${Date.now()}`;
         const newUser = {
-            id: `user${allUsers.length > 0 ? Math.max(...allUsers.map(u => parseInt(u.id.replace('user', '') || 0))) + 1 : 1}`,
-            username,
-            password,
-            role: 'user', // Rol por defecto para nuevos registros
-            phone, // Guardar el teléfono
-            purchases: [] // Inicializar compras
+            id: newUserId,
+            role: 'user',
+            ...newUserData
         };
 
-        setAllUsers(prevUsers => [...prevUsers, newUser]);
-        return true;
-    };
+        setAllUsers(prevUsers => {
+            const currentUsers = Array.isArray(prevUsers) ? prevUsers : [];
+            return [...currentUsers, newUser];
+        });
+        
+        setUser(newUser);
+        return { success: true, user: newUser };
+    }, [allUsers, setAllUsers, setUser]);
 
-    const logout = () => {
+    const logout = useCallback(() => {
         setUser(null);
-        navigate('/');
-    };
+    }, [setUser]);
 
-    const isAdmin = user && user.role === 'admin';
-    const isAuthenticated = !!user;
-
-    const getAllUsers = () => allUsers;
-
-    const updateUser = (updatedUserData) => {
-        setAllUsers(prevUsers =>
-            prevUsers.map(u => (u.id === updatedUserData.id ? updatedUserData : u))
-        );
-        if (user && user.id === updatedUserData.id) {
-            setUser(updatedUserData);
-        }
-    };
-
-    const deleteUser = (userId) => {
-        setAllUsers(prevUsers => prevUsers.filter(u => u.id !== userId));
-        if (user && user.id === userId) {
-            logout();
-        }
+    const value = {
+        user,
+        isAuthenticated,
+        login,
+        logout,
+        register,
+        allUsers, // <--- ¡NUEVO: Exponer allUsers en el contexto!
+        setAllUsers // <--- Opcional, pero útil si alguna vez necesitas modificar la lista de usuarios fuera de register
     };
 
     return (
-        <AuthContext.Provider value={{ user, isAuthenticated, isAdmin, login, register, logout, getAllUsers, updateUser, deleteUser }}>
+        <AuthContext.Provider value={value}>
             {children}
         </AuthContext.Provider>
     );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (context === undefined) {
+        throw new Error('useAuth must be used within an AuthProvider');
+    }
+    return context;
+};

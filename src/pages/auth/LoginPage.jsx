@@ -1,84 +1,102 @@
-// src/pages/LoginPage.jsx
 import React, { useState } from 'react';
-import { Container, Form, Button, Card, Alert } from 'react-bootstrap'; // Eliminamos Nav porque ya no hay pestañas aquí
-import { useAuth } from '../../contexts/AuthContext';
-import { useNavigate, Link } from 'react-router-dom'; // Importa Link
+import { Container, Form, Button, Card, Alert } from 'react-bootstrap';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext'; // Importa el contexto de autenticación
 
 const LoginPage = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const { login, isAuthenticated, isAdmin } = useAuth();
-  const navigate = useNavigate();
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+    const { login } = useAuth(); // Obtén la función de login del AuthContext
+    const navigate = useNavigate(); // Hook para la navegación
 
-  // Redirigir si ya está autenticado
-  if (isAuthenticated) {
-    if (isAdmin) {
-      navigate('/admin', { replace: true });
-    } else {
-      navigate('/', { replace: true });
-    }
-    return null; // No renderiza nada si ya está autenticado
-  }
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setError(''); // Limpia errores previos
+        if (!username || !password) {
+            setError('Por favor, ingresa tu nombre de usuario y contraseña.');
+            setLoading(false);
+            return;
+        }
 
-    if (login(username, password)) {
-      // La redirección es manejada por el AuthContext en la mayoría de los casos
-      // o por la verificación de isAuthenticated al inicio de este componente.
-      // Puedes dejar un console.log o un mensaje de éxito si lo deseas.
-      console.log('Inicio de sesión exitoso.');
-    } else {
-      setError('Nombre de usuario o contraseña incorrectos.');
-    }
-  };
+        try {
+            // Simula un retraso de red para la experiencia de usuario
+            await new Promise(resolve => setTimeout(resolve, 500)); 
 
-  return (
-    <Container fluid className="p-0 bg-light text-dark min-vh-100 d-flex justify-content-center align-items-center">
-      <Card className="p-4 shadow-lg border border-primary" style={{ maxWidth: '450px', width: '100%' }}>
-        <Card.Body>
-          <h2 className="text-center mb-4 text-primary">Iniciar Sesión</h2>
+            const success = login(username, password);
 
-          {error && <Alert variant="danger" className="mb-3">{error}</Alert>}
+            if (success) {
+                navigate('/'); // Redirige al inicio o a la página anterior
+            } else {
+                setError('Nombre de usuario o contraseña incorrectos.');
+            }
+        } catch (err) {
+            setError('Ocurrió un error al intentar iniciar sesión.');
+            console.error('Login error:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-          <Form onSubmit={handleSubmit}>
-            <Form.Group className="mb-3" controlId="formUsername">
-              <Form.Label className="text-secondary">Usuario</Form.Label>
-              <Form.Control
-                type="text"
-                placeholder="Ingresa tu usuario"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="bg-light text-dark border-info"
-                required
-              />
-            </Form.Group>
+    return (
+        <Container fluid className="p-0 bg-light text-dark min-vh-100 d-flex justify-content-center align-items-center">
+            <Card className="shadow-lg p-4" style={{ maxWidth: '450px', width: '100%' }}>
+                <Card.Body>
+                    <h2 className="text-center mb-4 text-primary fw-bold">
+                        <i className="bi bi-box-arrow-in-right me-2"></i> Iniciar Sesión
+                    </h2>
+                    {error && <Alert variant="danger">{error}</Alert>}
+                    <Form onSubmit={handleSubmit}>
+                        <Form.Group className="mb-3" controlId="username">
+                            <Form.Label>Nombre de Usuario</Form.Label>
+                            <Form.Control
+                                type="text"
+                                placeholder="Ingresa tu nombre de usuario"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                required
+                                disabled={loading}
+                            />
+                        </Form.Group>
 
-            <Form.Group className="mb-4" controlId="formPassword">
-              <Form.Label className="text-secondary">Contraseña</Form.Label>
-              <Form.Control
-                type="password"
-                placeholder="Contraseña"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="bg-light text-dark border-info"
-                required
-              />
-            </Form.Group>
+                        <Form.Group className="mb-4" controlId="password">
+                            <Form.Label>Contraseña</Form.Label>
+                            <Form.Control
+                                type="password"
+                                placeholder="Ingresa tu contraseña"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                disabled={loading}
+                            />
+                        </Form.Group>
 
-            <Button variant="primary" type="submit" className="w-100 shadow-sm">
-              Ingresar
-            </Button>
-          </Form>
-            <div className="mt-3 text-center">
-                ¿No tienes una cuenta? <Link to="/register">Regístrate aquí</Link>
-            </div>
-        </Card.Body>
-      </Card>
-    </Container>
-  );
+                        <Button
+                            variant="primary"
+                            type="submit"
+                            className="w-100 mb-3 fw-bold py-2"
+                            disabled={loading}
+                        >
+                            {loading ? (
+                                <>
+                                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                    Iniciando Sesión...
+                                </>
+                            ) : (
+                                'Entrar'
+                            )}
+                        </Button>
+                    </Form>
+                    <div className="text-center mt-3">
+                        ¿No tienes una cuenta? <Link to="/register">Regístrate aquí</Link>
+                    </div>
+                </Card.Body>
+            </Card>
+        </Container>
+    );
 };
 
 export default LoginPage;

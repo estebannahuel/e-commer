@@ -1,101 +1,160 @@
-// src/components/FakePaymentGateway.jsx
 import React, { useState } from 'react';
-import { Card, Button, Alert, ListGroup, Spinner } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
-import { useOrders } from '../contexts/OrderContext';
+import { Form, Button, Row, Col, Alert } from 'react-bootstrap';
 
-const FakePaymentGateway = ({ orderId, total }) => {
-    const [loading, setLoading] = useState(false);
-    const [success, setSuccess] = useState(false);
-    const [message, setMessage] = useState('');
-    const [paymentMethodSelected, setPaymentMethodSelected] = useState(null);
+const FakePaymentGateway = ({ onPaymentSuccess, onPaymentError, total }) => {
+    const [cardNumber, setCardNumber] = useState('');
+    const [cardName, setCardName] = useState('');
+    const [expiryDate, setExpiryDate] = useState('');
+    const [cvv, setCvv] = useState('');
+    const [error, setError] = useState('');
+    const [processing, setProcessing] = useState(false);
 
-    const navigate = useNavigate();
-    const { markOrderAsPaid } = useOrders(); // Usamos markOrderAsPaid
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        setError('');
+        setProcessing(true);
 
-    const handleSimulatePayment = async (method) => {
-        if (loading) return;
-
-        setLoading(true);
-        setSuccess(false);
-        setMessage('');
-        setPaymentMethodSelected(method);
-
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        try {
-            // Llama a la función del OrderContext para marcar la orden como PAGADA (no completada)
-            markOrderAsPaid(orderId);
-            setSuccess(true);
-            setMessage(`¡Pago simulado con ${method} exitoso!`);
-
-            // Redirige al usuario a una página de confirmación de pago
-            setTimeout(() => {
-                navigate('/checkout/success', { state: { orderId: orderId, status: 'Pagado' } });
-            }, 1000);
-
-        } catch (err) {
-            setMessage('Hubo un error al simular el pago. Inténtalo de nuevo.');
-            console.error("Error al simular pago:", err);
-            setSuccess(false);
-        } finally {
-            setLoading(false);
-            setPaymentMethodSelected(null);
+        // Simple validaciones de formato
+        if (!cardNumber || !cardName || !expiryDate || !cvv) {
+            setError('Por favor, completa todos los campos de la tarjeta.');
+            setProcessing(false);
+            return;
         }
+        if (!/^\d{16}$/.test(cardNumber.replace(/\s/g, ''))) {
+            setError('Número de tarjeta inválido. Debe tener 16 dígitos.');
+            setProcessing(false);
+            return;
+        }
+        if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiryDate)) {
+            setError('Fecha de vencimiento inválida. Formato MM/AA.');
+            setProcessing(false);
+            return;
+        }
+        if (!/^\d{3,4}$/.test(cvv)) {
+            setError('CVV inválido. Debe tener 3 o 4 dígitos.');
+            setProcessing(false);
+            return;
+        }
+
+        // Simulación de un procesamiento de pago asíncrono
+        setTimeout(() => {
+            // En un escenario real, aquí se enviarían los datos a un backend seguro
+            // y se recibiría una respuesta del proveedor de pagos.
+
+            // Simulación de éxito o error aleatorio (o basado en alguna lógica de test)
+            const isSuccess = Math.random() > 0.1; // 90% de éxito, 10% de fallo
+
+            if (isSuccess) {
+                onPaymentSuccess({
+                    transactionId: `TXN-${Date.now()}`,
+                    amount: total,
+                    paymentMethod: 'Credit Card (Simulated)'
+                });
+            } else {
+                setError('Error en el procesamiento del pago. Inténtalo de nuevo.');
+                onPaymentError('Payment simulation failed.');
+            }
+            setProcessing(false);
+        }, 2000); // Simula 2 segundos de procesamiento
+    };
+
+    // Función para formatear el número de tarjeta (espacios cada 4 dígitos)
+    const formatCardNumber = (value) => {
+        const cleanedValue = value.replace(/\s/g, '').slice(0, 16);
+        const parts = [];
+        for (let i = 0; i < cleanedValue.length; i += 4) {
+            parts.push(cleanedValue.substring(i, i + 4));
+        }
+        return parts.join(' ');
+    };
+
+    // Función para formatear la fecha de vencimiento (MM/AA)
+    const formatExpiryDate = (value) => {
+        const cleanedValue = value.replace(/\D/g, '').slice(0, 4);
+        if (cleanedValue.length > 2) {
+            return `${cleanedValue.slice(0, 2)}/${cleanedValue.slice(2)}`;
+        }
+        return cleanedValue;
     };
 
     return (
-        <Card className="p-4 shadow-sm">
-            <h4 className="mb-4 text-center">Selecciona un Método de Pago (Demo)</h4>
-            <p className="text-center text-muted">Total a Pagar: <strong>${total.toFixed(2)}</strong></p>
+        <div className="p-4 border rounded shadow-sm bg-light">
+            <h4 className="mb-4 text-center text-primary">Detalles de Pago</h4>
+            {error && <Alert variant="danger">{error}</Alert>}
+            <Form onSubmit={handleSubmit}>
+                <Form.Group className="mb-3" controlId="cardNumber">
+                    <Form.Label>Número de Tarjeta</Form.Label>
+                    <Form.Control
+                        type="text"
+                        placeholder="XXXX XXXX XXXX XXXX"
+                        value={formatCardNumber(cardNumber)}
+                        onChange={(e) => setCardNumber(e.target.value)}
+                        maxLength="19" // 16 dígitos + 3 espacios
+                        required
+                        disabled={processing}
+                    />
+                </Form.Group>
 
-            {message && (
-                <Alert variant={success ? "success" : "danger"} className="mt-3 text-center">
-                    {message}
-                </Alert>
-            )}
+                <Form.Group className="mb-3" controlId="cardName">
+                    <Form.Label>Nombre en la Tarjeta</Form.Label>
+                    <Form.Control
+                        type="text"
+                        placeholder="Nombre Completo"
+                        value={cardName}
+                        onChange={(e) => setCardName(e.target.value)}
+                        required
+                        disabled={processing}
+                    />
+                </Form.Group>
 
-            <ListGroup className="mt-3 mb-4">
-                <ListGroup.Item action onClick={() => handleSimulatePayment('Tarjeta de Crédito')} disabled={loading}>
-                    <div className="d-flex justify-content-between align-items-center">
-                        <span><i className="bi bi-credit-card-fill me-2"></i> Tarjeta de Crédito</span>
-                        {loading && paymentMethodSelected === 'Tarjeta de Crédito' && (
-                             <Spinner animation="border" size="sm" role="status" className="text-primary">
-                                 <span className="visually-hidden">Cargando...</span>
-                             </Spinner>
-                        )}
-                        {!loading && paymentMethodSelected !== 'Tarjeta de Crédito' && <i className="bi bi-chevron-right"></i>}
-                    </div>
-                </ListGroup.Item>
-                <ListGroup.Item action onClick={() => handleSimulatePayment('PayPal')} disabled={loading}>
-                    <div className="d-flex justify-content-between align-items-center">
-                        <span><i className="bi bi-paypal me-2"></i> PayPal</span>
-                        {loading && paymentMethodSelected === 'PayPal' && (
-                             <Spinner animation="border" size="sm" role="status" className="text-primary">
-                                 <span className="visually-hidden">Cargando...</span>
-                             </Spinner>
-                        )}
-                        {!loading && paymentMethodSelected !== 'PayPal' && <i className="bi bi-chevron-right"></i>}
-                    </div>
-                </ListGroup.Item>
-                <ListGroup.Item action onClick={() => handleSimulatePayment('Transferencia Bancaria')} disabled={loading}>
-                    <div className="d-flex justify-content-between align-items-center">
-                        <span><i className="bi bi-bank-fill me-2"></i> Transferencia Bancaria</span>
-                        {loading && paymentMethodSelected === 'Transferencia Bancaria' && (
-                             <Spinner animation="border" size="sm" role="status" className="text-primary">
-                                 <span className="visually-hidden">Cargando...</span>
-                             </Spinner>
-                        )}
-                        {!loading && paymentMethodSelected !== 'Transferencia Bancaria' && <i className="bi bi-chevron-right"></i>}
-                    </div>
-                </ListGroup.Item>
-                {/* Puedes añadir más métodos de pago simulados aquí */}
-            </ListGroup>
+                <Row className="mb-3">
+                    <Col>
+                        <Form.Group controlId="expiryDate">
+                            <Form.Label>Fecha de Vencimiento (MM/AA)</Form.Label>
+                            <Form.Control
+                                type="text"
+                                placeholder="MM/AA"
+                                value={formatExpiryDate(expiryDate)}
+                                onChange={(e) => setExpiryDate(e.target.value)}
+                                maxLength="5" // MM/AA
+                                required
+                                disabled={processing}
+                            />
+                        </Form.Group>
+                    </Col>
+                    <Col>
+                        <Form.Group controlId="cvv">
+                            <Form.Label>CVV</Form.Label>
+                            <Form.Control
+                                type="text"
+                                placeholder="XXX"
+                                value={cvv}
+                                onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))} // Solo números
+                                maxLength="4"
+                                required
+                                disabled={processing}
+                            />
+                        </Form.Group>
+                    </Col>
+                </Row>
 
-            <p className="text-muted text-center mt-3">
-                *Esto es un simulador de pasarela de pago para fines de demostración. No se procesarán transacciones reales.
-            </p>
-        </Card>
+                <Button
+                    variant="success"
+                    type="submit"
+                    className="w-100 mt-3"
+                    disabled={processing}
+                >
+                    {processing ? (
+                        <>
+                            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            Procesando Pago...
+                        </>
+                    ) : (
+                        `Pagar $${total.toFixed(2)}`
+                    )}
+                </Button>
+            </Form>
+        </div>
     );
 };
 

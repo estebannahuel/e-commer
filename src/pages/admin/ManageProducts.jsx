@@ -1,186 +1,186 @@
-// src/pages/admin/ManageProducts.jsx
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Table, Button, Form, Alert, Modal, Card } from 'react-bootstrap';
+import { Container, Row, Col, Card, Table, Button, Form, Modal, Alert } from 'react-bootstrap';
 import AdminSidebar from '../../components/AdminSidebar';
 import { useProducts } from '../../contexts/ProductContext';
-import RatingStars from '../../components/RatingStars'; // Importa el componente de estrellas
 
 const ManageProducts = () => {
+    // Desestructuramos las funciones del contexto
     const { products, addProduct, updateProduct, deleteProduct } = useProducts();
+    
     const [showModal, setShowModal] = useState(false);
-    const [editingProduct, setEditingProduct] = useState(null);
-    const [formProduct, setFormProduct] = useState({ id: '', name: '', price: '', description: '', category: '', stock: '', image: '' });
-    const [imageFile, setImageFile] = useState(null);
-    const [previewImage, setPreviewImage] = useState(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [currentProduct, setCurrentProduct] = useState(null);
+    const [formData, setFormData] = useState({
+        id: '',
+        name: '',
+        description: '',
+        price: '',
+        image: '', // Almacenará la URL o Base64
+        category: '',
+        stock: '',
+        averageRating: 0,
+        ratingCount: 0,
+        purchaseCount: 0
+    });
     const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
 
     useEffect(() => {
-        if (!showModal) {
-            setPreviewImage(null);
-            setImageFile(null);
-            setError('');
-            setSuccess('');
-        }
-    }, [showModal]);
-
-    const handleShowModal = (product = null) => {
-        setEditingProduct(product);
-        if (product) {
-            setFormProduct({
-                id: product.id,
-                name: product.name,
-                price: product.price,
-                description: product.description,
-                category: product.category,
-                stock: product.stock,
-                image: product.image
+        if (currentProduct) {
+            setFormData({
+                id: currentProduct.id,
+                name: currentProduct.name,
+                description: currentProduct.description,
+                price: currentProduct.price,
+                image: currentProduct.image,
+                category: currentProduct.category,
+                stock: currentProduct.stock,
+                averageRating: currentProduct.averageRating || 0,
+                ratingCount: currentProduct.ratingCount || 0,
+                purchaseCount: currentProduct.purchaseCount || 0
             });
-            setPreviewImage(product.image);
-            setImageFile(null);
         } else {
-            setFormProduct({ id: '', name: '', price: '', description: '', category: '', stock: '', image: '' });
-            setPreviewImage(null);
-            setImageFile(null);
+            setFormData({
+                id: '',
+                name: '',
+                description: '',
+                price: '',
+                image: '',
+                category: '',
+                stock: '',
+                averageRating: 0,
+                ratingCount: 0,
+                purchaseCount: 0
+            });
         }
+    }, [currentProduct]);
+
+    const handleCloseModal = () => {
+        setShowModal(false);
+        setIsEditing(false);
+        setCurrentProduct(null);
         setError('');
-        setSuccess('');
+        setSuccessMessage('');
+    };
+
+    const handleShowAddModal = () => {
+        setIsEditing(false);
+        setCurrentProduct(null);
         setShowModal(true);
     };
 
-    const handleCloseModal = () => setShowModal(false);
+    const handleShowEditModal = (product) => {
+        setIsEditing(true);
+        setCurrentProduct(product);
+        setShowModal(true);
+    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormProduct(prev => ({ ...prev, [name]: value }));
+        setFormData(prev => ({
+            ...prev,
+            [name]: name === 'price' || name === 'stock' || name === 'averageRating' || name === 'ratingCount' || name === 'purchaseCount'
+                ? parseFloat(value) || 0
+                : value
+        }));
     };
 
+    // *** NUEVA FUNCIÓN PARA MANEJAR LA SUBIDA DE IMAGEN A BASE64 ***
     const handleImageChange = (e) => {
         const file = e.target.files[0];
         if (file) {
-            setImageFile(file);
-            setPreviewImage(URL.createObjectURL(file));
-            setFormProduct(prev => ({ ...prev, image: '' }));
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setFormData(prev => ({
+                    ...prev,
+                    image: reader.result // Guardar la imagen como Base64
+                }));
+            };
+            reader.readAsDataURL(file);
         } else {
-            setImageFile(null);
-            setPreviewImage(editingProduct ? editingProduct.image : null);
+            setFormData(prev => ({
+                ...prev,
+                image: '' // Limpiar la imagen si no se selecciona ningún archivo
+            }));
         }
     };
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = (e) => {
         e.preventDefault();
         setError('');
-        setSuccess('');
+        setSuccessMessage('');
 
-        if (!formProduct.name || !formProduct.price || !formProduct.description || !formProduct.category || !formProduct.stock) {
-            setError('Nombre, precio, descripción, categoría y stock son obligatorios.');
+        if (!formData.name || !formData.price || !formData.category || formData.stock === '') {
+            setError('Por favor, completa los campos obligatorios: Nombre, Precio, Categoría, Stock.');
             return;
         }
-
-        if (!editingProduct && !imageFile) {
-            setError('Por favor, selecciona una imagen para el nuevo producto.');
-            return;
-        }
-        if (editingProduct && !imageFile && !editingProduct.image) {
-            setError('Por favor, selecciona una imagen para actualizar o carga una nueva.');
-            return;
-        }
-
-        const parsedPrice = parseFloat(formProduct.price);
-        const parsedStock = parseInt(formProduct.stock);
-
-        if (isNaN(parsedPrice) || parsedPrice <= 0) {
+        if (isNaN(formData.price) || formData.price <= 0) {
             setError('El precio debe ser un número positivo.');
             return;
         }
-        if (isNaN(parsedStock) || parsedStock < 0) {
+        if (isNaN(formData.stock) || formData.stock < 0) {
             setError('El stock debe ser un número no negativo.');
             return;
         }
+        // No validamos la imagen como obligatoria, puede ser una URL o Base64
 
-        let imageUrlToSave = formProduct.image;
-
-        if (imageFile) {
-            imageUrlToSave = await new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.readAsDataURL(imageFile);
-            });
-        } else if (editingProduct && editingProduct.image && !imageUrlToSave) {
-            imageUrlToSave = editingProduct.image;
-        } else if (!editingProduct && !imageUrlToSave) {
-            imageUrlToSave = '';
-        }
-
-        const productToSave = {
-            ...formProduct,
-            price: parsedPrice,
-            stock: parsedStock,
-            image: imageUrlToSave,
-            // Mantener los campos de valoración y compra si se está editando
-            // Si es un producto nuevo, ProductContext los inicializará en 0
-            ...(editingProduct && {
-                ratingSum: editingProduct.ratingSum,
-                ratingCount: editingProduct.ratingCount,
-                purchaseCount: editingProduct.purchaseCount,
-            })
-        };
-
-        if (editingProduct) {
-            updateProduct(productToSave);
-            setSuccess('Producto actualizado con éxito.');
+        if (isEditing) {
+            updateProduct(formData); // Usamos la función del contexto
+            setSuccessMessage('Producto actualizado exitosamente.');
         } else {
-            addProduct(productToSave);
-            setSuccess('Producto añadido con éxito.');
+            addProduct(formData); // Usamos la función del contexto
+            setSuccessMessage('Producto añadido exitosamente.');
         }
-        handleCloseModal();
+        
+        setTimeout(() => {
+            handleCloseModal();
+        }, 1500);
     };
 
-    const handleDelete = (id) => {
+    const handleDeleteProduct = (productId) => {
         if (window.confirm('¿Estás seguro de que quieres eliminar este producto?')) {
-            deleteProduct(id);
-            setSuccess('Producto eliminado con éxito.');
+            deleteProduct(productId); // Usamos la función del contexto
+            setSuccessMessage('Producto eliminado exitosamente.'); // Mensaje de éxito
+            setTimeout(() => {
+                setSuccessMessage(''); // Limpiar el mensaje después de un tiempo
+            }, 2000);
         }
     };
 
     return (
-        <Container fluid className="p-0 min-vh-100 bg-light">
-            <Row className="g-0">
-                <Col md={2}>
+        <Container fluid className="admin-container">
+            <Row>
+                <Col md={3} className="p-0">
                     <AdminSidebar />
                 </Col>
-                <Col md={10} className="p-4">
-                    <Container className="my-5 p-4 rounded shadow-sm border border-light bg-white">
-                        <h1 className="text-center mb-4 text-primary display-4 fw-bold">
-                            <i className="bi bi-box-seam me-3"></i> Gestión de Productos
-                        </h1>
-                        <p className="lead text-secondary text-center mb-5">
-                            Administra tu catálogo de productos: añade, edita o elimina.
-                        </p>
+                <Col md={9} className="p-4">
+                    <h1 className="mb-4 text-primary display-5 fw-bold">
+                        <i className="bi bi-box-seam me-3"></i> Gestión de Productos
+                    </h1>
+                    <p className="lead text-secondary mb-4">
+                        Aquí puedes añadir, editar y eliminar productos de tu tienda.
+                    </p>
 
-                        <div className="d-flex justify-content-end mb-4">
-                            <Button variant="primary" onClick={() => handleShowModal()}>
-                                <i className="bi bi-plus-circle-fill me-2"></i> Añadir Nuevo Producto
-                            </Button>
-                        </div>
+                    {successMessage && <Alert variant="success" className="mb-3">{successMessage}</Alert>}
+                    {error && <Alert variant="danger" className="mb-3">{error}</Alert>}
 
-                        {error && <Alert variant="danger">{error}</Alert>}
-                        {success && <Alert variant="success">{success}</Alert>}
 
-                        {products.length === 0 ? (
-                            <Alert variant="info" className="text-center">No hay productos para mostrar.</Alert>
-                        ) : (
-                            <Table striped bordered hover responsive className="shadow-sm">
-                                <thead className="table-dark">
+                    <Button variant="success" className="mb-4" onClick={handleShowAddModal}>
+                        <i className="bi bi-plus-circle me-2"></i> Añadir Nuevo Producto
+                    </Button>
+
+                    <Card className="shadow-sm border-0">
+                        <Card.Header className="bg-dark text-white fs-5">Lista de Productos</Card.Header>
+                        <Card.Body>
+                            <Table striped bordered hover responsive className="text-center">
+                                <thead className="table-light">
                                     <tr>
                                         <th>ID</th>
                                         <th>Imagen</th>
                                         <th>Nombre</th>
+                                        <th>Categoría</th>
                                         <th>Precio</th>
                                         <th>Stock</th>
-                                        <th>Categoría</th>
-                                        <th>Valoración</th> {/* Nueva columna */}
-                                        <th>Vendidos</th>   {/* Nueva columna */}
                                         <th>Acciones</th>
                                     </tr>
                                 </thead>
@@ -190,35 +190,29 @@ const ManageProducts = () => {
                                             <td>{product.id}</td>
                                             <td>
                                                 <img
-                                                    src={product.image || 'https://via.placeholder.com/50x50?text=No+Image'}
+                                                    src={product.image || '/images/placeholder.jpg'} // Usa la imagen Base64 o el placeholder
                                                     alt={product.name}
-                                                    style={{ width: '50px', height: '50px', objectFit: 'cover' }}
+                                                    style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '5px' }}
                                                 />
                                             </td>
-                                            <td>{product.name}</td>
-                                            <td>${parseFloat(product.price).toFixed(2)}</td>
-                                            <td>{product.stock}</td>
+                                            <td className="text-start">{product.name}</td>
                                             <td>{product.category}</td>
+                                            <td>${product.price.toFixed(2)}</td>
+                                            <td>{product.stock}</td>
                                             <td>
-                                                {/* Mostrar estrellas de valoración */}
-                                                <div className="d-flex align-items-center">
-                                                    <RatingStars initialRating={product.averageRating} canRate={false} size={15} /> {/* Tamaño más pequeño */}
-                                                    {product.ratingCount > 0 && (
-                                                        <span className="ms-1 text-muted small">
-                                                            ({product.averageRating.toFixed(1)}) <br/> ({product.ratingCount} {product.ratingCount === 1 ? 'reseña' : 'reseñas'})
-                                                        </span>
-                                                    )}
-                                                    {product.ratingCount === 0 && (
-                                                        <span className="ms-1 text-muted small">(Sin reseñas)</span>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td>{product.purchaseCount}</td> {/* Mostrar conteo de compras */}
-                                            <td>
-                                                <Button variant="warning" size="sm" className="me-2" onClick={() => handleShowModal(product)}>
+                                                <Button
+                                                    variant="warning"
+                                                    size="sm"
+                                                    className="me-2"
+                                                    onClick={() => handleShowEditModal(product)}
+                                                >
                                                     <i className="bi bi-pencil-fill"></i>
                                                 </Button>
-                                                <Button variant="danger" size="sm" onClick={() => handleDelete(product.id)}>
+                                                <Button
+                                                    variant="danger"
+                                                    size="sm"
+                                                    onClick={() => handleDeleteProduct(product.id)}
+                                                >
                                                     <i className="bi bi-trash-fill"></i>
                                                 </Button>
                                             </td>
@@ -226,112 +220,180 @@ const ManageProducts = () => {
                                     ))}
                                 </tbody>
                             </Table>
-                        )}
-                    </Container>
-                </Col>
-            </Row>
+                            {products.length === 0 && (
+                                <Alert variant="info" className="text-center mt-3">
+                                    No hay productos para mostrar. ¡Añade uno nuevo!
+                                </Alert>
+                            )}
+                        </Card.Body>
+                    </Card>
 
-            {/* Modal para Añadir/Editar Producto */}
-            <Modal show={showModal} onHide={handleCloseModal} size="lg">
-                <Modal.Header closeButton>
-                    <Modal.Title>{editingProduct ? 'Editar Producto' : 'Añadir Producto'}</Modal.Title>
-                </Modal.Header>
-                <Modal.Body>
-                    <Row>
-                        <Col md={6}>
+                    {/* Modal para Añadir/Editar Producto */}
+                    <Modal show={showModal} onHide={handleCloseModal} centered size="lg">
+                        <Modal.Header closeButton className="bg-primary text-white">
+                            <Modal.Title>{isEditing ? 'Editar Producto' : 'Añadir Nuevo Producto'}</Modal.Title>
+                        </Modal.Header>
+                        <Modal.Body>
+                            {error && <Alert variant="danger">{error}</Alert>}
+                            {successMessage && <Alert variant="success">{successMessage}</Alert>}
                             <Form onSubmit={handleSubmit}>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Nombre</Form.Label>
-                                    <Form.Control type="text" name="name" value={formProduct.name} onChange={handleChange} required />
-                                </Form.Group>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Precio</Form.Label>
-                                    <Form.Control type="number" step="0.01" name="price" value={formProduct.price} onChange={handleChange} required />
-                                </Form.Group>
-                                <Form.Group className="mb-3">
+                                <Row>
+                                    <Col md={6}>
+                                        <Form.Group className="mb-3" controlId="productName">
+                                            <Form.Label>Nombre del Producto <span className="text-danger">*</span></Form.Label>
+                                            <Form.Control
+                                                type="text"
+                                                name="name"
+                                                value={formData.name}
+                                                onChange={handleChange}
+                                                required
+                                            />
+                                        </Form.Group>
+                                    </Col>
+                                    <Col md={6}>
+                                        <Form.Group className="mb-3" controlId="productCategory">
+                                            <Form.Label>Categoría <span className="text-danger">*</span></Form.Label>
+                                            <Form.Control
+                                                type="text"
+                                                name="category"
+                                                value={formData.category}
+                                                onChange={handleChange}
+                                                required
+                                            />
+                                        </Form.Group>
+                                    </Col>
+                                </Row>
+
+                                <Form.Group className="mb-3" controlId="productDescription">
                                     <Form.Label>Descripción</Form.Label>
-                                    <Form.Control as="textarea" rows={3} name="description" value={formProduct.description} onChange={handleChange} required />
-                                </Form.Group>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Categoría</Form.Label>
-                                    <Form.Control type="text" name="category" value={formProduct.category} onChange={handleChange} required />
-                                </Form.Group>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Stock</Form.Label>
-                                    <Form.Control type="number" name="stock" value={formProduct.stock} onChange={handleChange} required />
+                                    <Form.Control
+                                        as="textarea"
+                                        rows={3}
+                                        name="description"
+                                        value={formData.description}
+                                        onChange={handleChange}
+                                    />
                                 </Form.Group>
 
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Cargar Imagen</Form.Label>
+                                <Row>
+                                    <Col md={6}>
+                                        <Form.Group className="mb-3" controlId="productPrice">
+                                            <Form.Label>Precio <span className="text-danger">*</span></Form.Label>
+                                            <Form.Control
+                                                type="number"
+                                                name="price"
+                                                value={formData.price}
+                                                onChange={handleChange}
+                                                step="0.01"
+                                                min="0"
+                                                required
+                                            />
+                                        </Form.Group>
+                                    </Col>
+                                    <Col md={6}>
+                                        <Form.Group className="mb-3" controlId="productStock">
+                                            <Form.Label>Stock <span className="text-danger">*</span></Form.Label>
+                                            <Form.Control
+                                                type="number"
+                                                name="stock"
+                                                value={formData.stock}
+                                                onChange={handleChange}
+                                                min="0"
+                                                required
+                                            />
+                                        </Form.Group>
+                                    </Col>
+                                </Row>
+
+                                <Form.Group className="mb-3" controlId="productImageFile">
+                                    <Form.Label>Subir Imagen</Form.Label>
                                     <Form.Control
                                         type="file"
                                         accept="image/*"
                                         onChange={handleImageChange}
-                                        required={!editingProduct && !formProduct.image}
+                                    />
+                                    {formData.image && (
+                                        <div className="mt-2 text-center">
+                                            <p className="mb-1">Previsualización de la imagen:</p>
+                                            <img
+                                                src={formData.image}
+                                                alt="Previsualización"
+                                                style={{ maxWidth: '150px', maxHeight: '150px', objectFit: 'cover', border: '1px solid #ddd', padding: '5px' }}
+                                            />
+                                        </div>
+                                    )}
+                                </Form.Group>
+                                
+                                {/* Si también quieres permitir URL directa, puedes añadir un campo más,
+                                    pero la subida de archivo es preferible si quieres que persista la imagen. */}
+                                {/*
+                                <Form.Group className="mb-3" controlId="productImageUrl">
+                                    <Form.Label>O URL de la Imagen (si no subes archivo)</Form.Label>
+                                    <Form.Control
+                                        type="text"
+                                        name="image"
+                                        value={formData.image.startsWith('data:image/') ? '' : formData.image} // No muestra Base64 aquí
+                                        onChange={handleChange}
+                                        placeholder="Ej: /images/mi-producto.jpg"
                                     />
                                 </Form.Group>
+                                */}
 
-                                <Button variant="primary" type="submit" className="w-100 mt-3">
-                                    {editingProduct ? 'Guardar Cambios' : 'Añadir Producto'}
-                                </Button>
+                                {/* Campos de Rating y Purchase Count (solo para visualización/edición manual si es necesario) */}
+                                <Row>
+                                    <Col md={4}>
+                                        <Form.Group className="mb-3" controlId="averageRating">
+                                            <Form.Label>Valoración Promedio</Form.Label>
+                                            <Form.Control
+                                                type="number"
+                                                name="averageRating"
+                                                value={formData.averageRating}
+                                                onChange={handleChange}
+                                                step="0.1"
+                                                min="0"
+                                                max="5"
+                                            />
+                                        </Form.Group>
+                                    </Col>
+                                    <Col md={4}>
+                                        <Form.Group className="mb-3" controlId="ratingCount">
+                                            <Form.Label>Número de Valoraciones</Form.Label>
+                                            <Form.Control
+                                                type="number"
+                                                name="ratingCount"
+                                                value={formData.ratingCount}
+                                                onChange={handleChange}
+                                                min="0"
+                                            />
+                                        </Form.Group>
+                                    </Col>
+                                    <Col md={4}>
+                                        <Form.Group className="mb-3" controlId="purchaseCount">
+                                            <Form.Label>Veces Comprado</Form.Label>
+                                            <Form.Control
+                                                type="number"
+                                                name="purchaseCount"
+                                                value={formData.purchaseCount}
+                                                onChange={handleChange}
+                                                min="0"
+                                            />
+                                        </Form.Group>
+                                    </Col>
+                                </Row>
+
+                                <div className="d-flex justify-content-end mt-4">
+                                    <Button variant="secondary" onClick={handleCloseModal} className="me-2">
+                                        Cancelar
+                                    </Button>
+                                    <Button variant="primary" type="submit">
+                                        {isEditing ? 'Guardar Cambios' : 'Añadir Producto'}
+                                    </Button>
+                                </div>
                             </Form>
-                        </Col>
-
-                        <Col md={6}>
-                            <h4 className="text-center mb-3">Vista Previa del Producto</h4>
-                            <Card className="text-center shadow-sm">
-                                {previewImage ? (
-                                    <Card.Img
-                                        variant="top"
-                                        src={previewImage}
-                                        alt={formProduct.name || 'Vista previa de imagen'}
-                                        style={{ maxHeight: '250px', objectFit: 'contain', padding: '10px' }}
-                                    />
-                                ) : (
-                                    <div style={{ height: '250px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f0f0', color: '#666' }}>
-                                        No hay imagen seleccionada
-                                    </div>
-                                )}
-                                <Card.Body>
-                                    <Card.Title>{formProduct.name || 'Nombre del Producto'}</Card.Title>
-                                    <Card.Text>
-                                        <strong>Precio:</strong> ${parseFloat(formProduct.price || 0).toFixed(2)}
-                                    </Card.Text>
-                                    <Card.Text>
-                                        <strong>Stock:</strong> {formProduct.stock || '0'} unidades
-                                    </Card.Text>
-                                    <Card.Text>
-                                        <strong>Categoría:</strong> {formProduct.category || 'Sin Categoría'}
-                                    </Card.Text>
-                                    <Card.Text className="text-muted small">
-                                        {formProduct.description || 'Descripción del producto...'}
-                                    </Card.Text>
-                                    {/* Mostrar valoración en la vista previa del modal */}
-                                    {editingProduct && (
-                                        <Card.Text className="mb-2">
-                                            <strong>Calificación:</strong>{' '}
-                                            <RatingStars initialRating={editingProduct.averageRating} canRate={false} size={18} />
-                                            {editingProduct.ratingCount > 0 && (
-                                                <span className="ms-1 text-muted small">
-                                                    ({editingProduct.averageRating.toFixed(1)}) ({editingProduct.ratingCount} {editingProduct.ratingCount === 1 ? 'reseña' : 'reseñas'})
-                                                </span>
-                                            )}
-                                            {editingProduct.ratingCount === 0 && (
-                                                <span className="ms-1 text-muted small">(Sin reseñas)</span>
-                                            )}
-                                        </Card.Text>
-                                    )}
-                                    {editingProduct && (
-                                        <Card.Text>
-                                            <strong>Vendidos:</strong> {editingProduct.purchaseCount} unidades
-                                        </Card.Text>
-                                    )}
-                                </Card.Body>
-                            </Card>
-                        </Col>
-                    </Row>
-                </Modal.Body>
-            </Modal>
+                        </Modal.Body>
+                    </Modal>
+                </Col>
+            </Row>
         </Container>
     );
 };

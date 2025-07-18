@@ -1,42 +1,36 @@
-// src/components/RatingStars.jsx
-import React, { useState } from 'react';
-import { FaStar } from 'react-icons/fa'; // Necesitarás instalar react-icons si no lo tienes: npm install react-icons
+import React from 'react';
+import { FaStar, FaStarHalfAlt, FaRegStar } from 'react-icons/fa'; // Importa iconos de estrellas
 
-const RatingStars = ({ productId, initialRating = 0, onRate, canRate = true }) => {
-    const [hover, setHover] = useState(0);
+const RatingStars = ({ rating, maxRating = 5, color = '#ffc107', size = '1.2em' }) => {
+    const stars = [];
+    const fullStars = Math.floor(rating);
+    // Verifica si hay parte decimal (media estrella), pero solo si la parte decimal es significativa
+    // (ej. 4.5 debe tener media estrella, 4.0 no)
+    const hasHalfStar = rating % 1 !== 0 && (rating % 1) >= 0.25 && (rating % 1) <= 0.75; 
+    const emptyStars = maxRating - fullStars - (hasHalfStar ? 1 : 0);
 
-    const fullStar = { color: '#ffc107' }; // Estrella amarilla
-    const emptyStar = { color: '#e4e5e9' }; // Estrella gris
+    // Estrellas completas
+    for (let i = 0; i < fullStars; i++) {
+        stars.push(<FaStar key={`full-${i}`} color={color} style={{ fontSize: size }} />);
+    }
+
+    // Media estrella (si aplica)
+    if (hasHalfStar) {
+        stars.push(<FaStarHalfAlt key="half" color={color} style={{ fontSize: size }} />);
+    }
+
+    // Estrellas vacías
+    for (let i = 0; i < emptyStars; i++) {
+        stars.push(<FaRegStar key={`empty-${i}`} color={color} style={{ fontSize: size }} />);
+    }
 
     return (
-        <div className="d-flex justify-content-center align-items-center" style={{ gap: '2px' }}>
-            {[...Array(5)].map((star, index) => {
-                const ratingValue = index + 1;
-                return (
-                    <label key={index}>
-                        <input
-                            type="radio"
-                            name="rating"
-                            value={ratingValue}
-                            onClick={() => canRate && onRate(productId, ratingValue)}
-                            style={{ display: 'none' }}
-                            disabled={!canRate}
-                        />
-                        <FaStar
-                            className="star"
-                            color={ratingValue <= (hover || initialRating) ? fullStar.color : emptyStar.color}
-                            size={canRate ? 25 : 20} // Un poco más grandes si se pueden calificar
-                            onMouseEnter={() => canRate && setHover(ratingValue)}
-                            onMouseLeave={() => canRate && setHover(0)}
-                            style={{ cursor: canRate ? 'pointer' : 'default', transition: 'color 200ms' }}
-                        />
-                    </label>
-                );
-            })}
-            {!canRate && initialRating > 0 && (
-                <span className="ms-2 text-muted">({initialRating.toFixed(1)})</span>
-            )}
-            {canRate && <span className="ms-2 text-muted">({initialRating.toFixed(1)})</span>}
+        <div className="d-flex align-items-center">
+            {stars.map((star, index) => (
+                <span key={index} className="me-1">
+                    {star}
+                </span>
+            ))}
         </div>
     );
 };
